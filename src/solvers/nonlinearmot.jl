@@ -1,9 +1,20 @@
 function update!(op::ConductivityTD_Functionaltype, jcoeffs, ecoeffs, k, eq1, eq2)
     tgeo = BEAST.geometry(eq2.test_space_dict[1].space)
     bgeo = BEAST.geometry(eq2.trial_space_dict[1].space)
+    V1 = nothing
+    W1 = nothing
+    if isa(eq1.trial_space_dict[1], BEAST.FiniteDiffTimeStep)
+        V1 = eq1.trial_space_dict[1].spatialbasis ⊗ temporalbasis(eq1.trial_space_dict[1])
+        W1 = eq1.test_space_dict[1].spatialbasis ⊗ temporalbasis(eq1.test_space_dict[1])
+    else
+        V1 = eq1.trial_space_dict[1]
+        W1 = eq1.test_space_dict[1]
+    end
+    V2 = eq2.trial_space_dict[1]
+    W2 = eq2.test_space_dict[1]
     if CompScienceMeshes.refines(tgeo, bgeo)
-        op.efield = quadpoint_field_refines(op, ecoeffs, k, eq2.test_space_dict[1], eq2.trial_space_dict[1])
-        op.jflux = quadpoint_field_refines(op, jcoeffs, k, eq2.test_space_dict[1], eq1.trial_space_dict[1])
+        op.efield = quadpoint_field_refines(op, ecoeffs, k, W2, V2)
+        op.jflux = quadpoint_field_refines(op, jcoeffs, k, W2, V1)
     else
         op.efield = quadpoint_field(op, ecoeffs, k, eq2.test_space_dict[1], eq2.trial_space_dict[1])
         op.jflux = quadpoint_field(op, jcoeffs, k, eq2.test_space_dict[1], eq1.trial_space_dict[1])
@@ -185,7 +196,7 @@ function marchonintimenl(eq1, eq2,  Z, inc, Ġ, G_j, G_nl, Nt)
     jk_start = 2
     ek_start = 2
     jk_stop = Nt
-    ek_stop = BEAST.numfunctions(eq1.trial_space_dict[1].time)+1
+    ek_stop = BEAST.numfunctions(eq2.trial_space_dict[1].time)+1
     csxj = zeros(T,N,Nt)
     csxe = zeros(T,Ne,Nt)
     σ = eq2.equation.rhs.terms[1].functional
@@ -257,6 +268,9 @@ function marchonintimenl(eq1, eq2,  Z, inc, Ġ, G_j, G_nl, Nt)
 end
 
 function td_solve(eq1::BEAST.DiscreteEquation, eq2::BEAST.DiscreteEquation)
+    if isa(eq1.trial_space_dict[1], BEAST.FiniteDiffTimeStep)
+        return td_solve_cq(eq1, eq2)
+    end
     Z = BEAST.assemble(eq1.equation.lhs, eq1.test_space_dict, eq1.trial_space_dict)
     b = BEAST.td_assemble(eq1.equation.rhs, eq1.test_space_dict)
     h = eq2.trial_space_dict[eq2.equation.lhs.terms[1].trial_id]
@@ -264,6 +278,24 @@ function td_solve(eq1::BEAST.DiscreteEquation, eq2::BEAST.DiscreteEquation)
     f1 = eq1.test_space_dict[1]
     f2 = eq2.test_space_dict[1]
     g = eq1.trial_space_dict[1]
+    idST = BEAST.Identity()⊗BEAST.Identity()
+    Ġ = BEAST.assemble(idST, f1, h1)
+    G_j = BEAST.assemble(idST, f2, g)
+    Nt = BEAST.numfunctions(g.time)
+    if typeof(eq2.equation.rhs.terms[1].functional)==ConductivityTDFunc
+        G_nl = BEAST.assemble(idST, f2, h)
+        return marchonintimenl(eq1, eq2, Z, b, Ġ, G_j, G_nl, Nt)
+    end
+end
+
+function td_solve_cq(eq1::BEAST.DiscreteEquation, eq2::BEAST.DiscreteEquation)
+    Z = BEAST.assemble(eq1.equation.lhs, eq1.test_space_dict, eq1.trial_space_dict)
+    b = BEAST.td_assemble(eq1.equation.rhs, eq1.test_space_dict)
+    h = eq2.trial_space_dict[eq2.equation.lhs.terms[1].trial_id]
+    h1 = h.space⊗BEAST.derive(h.time)
+    f1 = eq1.test_space_dict[1].spatialbasis ⊗ temporalbasis(eq1.test_space_dict[1])
+    f2 = eq2.test_space_dict[1]
+    g = eq1.trial_space_dict[1].spatialbasis ⊗ temporalbasis(eq1.trial_space_dict[1])
     idST = BEAST.Identity()⊗BEAST.Identity()
     Ġ = BEAST.assemble(idST, f1, h1)
     G_j = BEAST.assemble(idST, f2, g)
