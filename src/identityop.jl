@@ -22,6 +22,7 @@ end
 
 const LinearRefSpaceTriangle = Union{RTRefSpace, RT2RefSpace, NDRefSpace, ND2RefSpace, BDMRefSpace, NCrossBDMRefSpace}
 defaultquadstrat(::LocalOperator, ::LinearRefSpaceTriangle, ::LinearRefSpaceTriangle) = SingleNumQStrat(6)
+defaultquadstrat(::LocalOperator, ::LagrangeRefSpace, ::LinearRefSpaceTriangle) = SingleNumQStrat(6)
 function quaddata(op::LocalOperator, g::LinearRefSpaceTriangle, f::LinearRefSpaceTriangle, tels, bels,
         qs::SingleNumQStrat)
 
@@ -30,6 +31,15 @@ function quaddata(op::LocalOperator, g::LinearRefSpaceTriangle, f::LinearRefSpac
     A = _alloc_workspace(qd, g, f, tels, bels)
 
     return qd, A
+end
+function quaddata(op::LocalOperator, g::LagrangeRefSpace{T, Deg, 3} where {T, Deg}, f::LinearRefSpaceTriangle, tels, bels,
+    qs::SingleNumQStrat) 
+
+u, w = trgauss(qs.quad_rule)
+qd = [(w[i],SVector(u[1,i],u[2,i])) for i in 1:length(w)]
+A = _alloc_workspace(qd, g, f, tels, bels)
+
+return qd, A
 end
 
 defaultquadstrat(::LocalOperator, ::subReferenceSpace, ::subReferenceSpace) = SingleNumQStrat(6)

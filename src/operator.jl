@@ -81,7 +81,7 @@ defaultquadstrat(lc::LinearCombinationOfOperators, tfs, bfs) =
 function assemble(operator::AbstractOperator, test_functions, trial_functions;
     storage_policy = Val{:bandedstorage},
     # long_delays_policy = LongDelays{:compress},
-    threading = Threading{:multi},
+    threading = Threading{:single},
     quadstrat=defaultquadstrat(operator, test_functions, trial_functions))
 
     Z, store = allocatestorage(operator, test_functions, trial_functions,

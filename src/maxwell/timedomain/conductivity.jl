@@ -20,6 +20,7 @@ scalartype(p::ConductivityTDOp) = eltype(p.op.efield[1])
 function conductivityfunc(chr::BEAST.Polynomial;numdiffs=0)
     dchr = derive(chr)
     efield = fill(SVector(0.0,0.0,0.0), (2,2))
+    charge = fill(SVector(0.0), (2,2))
     ConductivityTDFunc(chr, dchr, numdiffs, efield, efield)
 end
 

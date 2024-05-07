@@ -185,6 +185,7 @@ include("multiplicativeop.jl")
 include("identityop.jl")
 include("integralop.jl")
 include("dyadicop.jl")
+include("divergenceop.jl")
 include("interpolation.jl")
 
 include("quadrature/doublenumqstrat.jl")

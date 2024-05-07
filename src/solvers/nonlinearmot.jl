@@ -4,20 +4,18 @@ function update!(op::ConductivityTD_Functionaltype, jcoeffs, ecoeffs, k, eq1, eq
     V1 = nothing
     W1 = nothing
     if isa(eq1.trial_space_dict[1], BEAST.FiniteDiffTimeStep)
-        V1 = eq1.trial_space_dict[1].spatialbasis ⊗ temporalbasis(eq1.trial_space_dict[1])
-        W1 = eq1.test_space_dict[1].spatialbasis ⊗ temporalbasis(eq1.test_space_dict[1])
+        V1 = eq1.trial_space_dict[1].spatialBasis ⊗ temporalbasis(eq2.trial_space_dict[1])
     else
         V1 = eq1.trial_space_dict[1]
-        W1 = eq1.test_space_dict[1]
     end
     V2 = eq2.trial_space_dict[1]
     W2 = eq2.test_space_dict[1]
     if CompScienceMeshes.refines(tgeo, bgeo)
         op.efield = quadpoint_field_refines(op, ecoeffs, k, W2, V2)
-        op.jflux = quadpoint_field_refines(op, jcoeffs, k, W2, V1)
+        #op.jflux = quadpoint_field_refines(op, jcoeffs, k, W2, V1)
     else
-        op.efield = quadpoint_field(op, ecoeffs, k, eq2.test_space_dict[1], eq2.trial_space_dict[1])
-        op.jflux = quadpoint_field(op, jcoeffs, k, eq2.test_space_dict[1], eq1.trial_space_dict[1])
+        op.efield = quadpoint_field(op, ecoeffs, k,  W2, V2)
+        #op.jflux = quadpoint_field(op, jcoeffs, k, W2, V1)
     end	
 end
 
@@ -149,7 +147,6 @@ function quadpoint_field(biop::ConductivityTD_Functionaltype, coeffs, k, tfs, bf
     btcell = btels[k]
     for (p,bcell) in enumerate(bels)   
         qr = BEAST.quadrule(biop, trefs, brefs, bcell, qd, quadstrat)
-        #println(length(qr))
         for (qi,qdpt) in enumerate(qr)
             mp = carttobary(bcell, qdpt[2])
             vals = brefs(neighborhood(bcell, mp))
@@ -171,10 +168,10 @@ function quadpoint_field(biop::ConductivityTD_Functionaltype, coeffs, k, tfs, bf
 end
 
 function marchonintimenl(eq1, eq2,  Z, inc, Ġ, G_j, G_nl, Nt)
-    T = eltype(Z)
-    Z0 = zeros(T, size(Z)[1:2])
+    Z0 = zeros(eltype(Z), size(Z)[1:2])
     BEAST.ConvolutionOperators.timeslice!(Z0,Z,1)
-    Ġ0 = Ġ.data[1,:,:]
+    Ġ0 = zeros(eltype(Ġ), size(Ġ)[1:2])
+    BEAST.ConvolutionOperators.timeslice!(Ġ0,Ġ,1) 
     G_j0 = G_j.data[1,:,:]
     G_nl0 = G_nl.data[1,:,:]
     T = eltype(Z0)
@@ -267,18 +264,35 @@ function marchonintimenl(eq1, eq2,  Z, inc, Ġ, G_j, G_nl, Nt)
     end =#
 end
 
-function td_solve(eq1::BEAST.DiscreteEquation, eq2::BEAST.DiscreteEquation)
-    if isa(eq1.trial_space_dict[1], BEAST.FiniteDiffTimeStep)
-        return td_solve_cq(eq1, eq2)
-    end
-    Z = BEAST.assemble(eq1.equation.lhs, eq1.test_space_dict, eq1.trial_space_dict)
-    b = BEAST.td_assemble(eq1.equation.rhs, eq1.test_space_dict)
+function td_solve(eq1::BEAST.DiscreteEquation, eq2::BEAST.DiscreteEquation, cq=false)
+    b = BEAST.assemble(eq1.equation.rhs, eq1.test_space_dict)
     h = eq2.trial_space_dict[eq2.equation.lhs.terms[1].trial_id]
     h1 = h.space⊗BEAST.derive(h.time)
     f1 = eq1.test_space_dict[1]
     f2 = eq2.test_space_dict[1]
     g = eq1.trial_space_dict[1]
     idST = BEAST.Identity()⊗BEAST.Identity()
+    if cq
+        Δt = eq1.trial_space_dict[1].time.timestep
+        Nt = eq1.trial_space_dict[1].time.numfunctions
+        X = eq1.trial_space_dict[1].space
+        Y = eq2.trial_space_dict[1].space
+        V = BEAST.FiniteDiffTimeStep(X, Δt, Nt)
+        W = BEAST.FiniteDiffTimeStep(Y, Δt, Nt)
+        c=1.0
+        LaplaceEFIO(s::T) where {T} = MWSingleLayer3D(s/c, -s*s/c, T(-c))
+        kmax = 30
+        rho = 1.0001
+        method = BEAST.BE(Δt)
+        SLcq = BEAST.FiniteDiffConvolutionQuadrature(LaplaceEFIO, method, Δt, kmax, rho)
+        Z = BEAST.assemble(SLcq, V, V)
+        #= LaplaceId(s::T) where {T} = s*Identity()
+        kmax = 10
+        Idcq = BEAST.FiniteDiffConvolutionQuadrature(LaplaceId, method, Δt, kmax, rho)
+        Ġ = BEAST.assemble(Idcq, V, W)=#
+    else
+        Z = BEAST.assemble(eq1.equation.lhs, eq1.test_space_dict, eq1.trial_space_dict)
+    end
     Ġ = BEAST.assemble(idST, f1, h1)
     G_j = BEAST.assemble(idST, f2, g)
     Nt = BEAST.numfunctions(g.time)
@@ -290,12 +304,12 @@ end
 
 function td_solve_cq(eq1::BEAST.DiscreteEquation, eq2::BEAST.DiscreteEquation)
     Z = BEAST.assemble(eq1.equation.lhs, eq1.test_space_dict, eq1.trial_space_dict)
-    b = BEAST.td_assemble(eq1.equation.rhs, eq1.test_space_dict)
+    b = BEAST.assemble(eq1.equation.rhs, eq1.test_space_dict)
     h = eq2.trial_space_dict[eq2.equation.lhs.terms[1].trial_id]
     h1 = h.space⊗BEAST.derive(h.time)
-    f1 = eq1.test_space_dict[1].spatialbasis ⊗ temporalbasis(eq1.test_space_dict[1])
+    f1 = eq1.test_space_dict[1].spatialBasis ⊗ temporalbasis(eq1.test_space_dict[1])
     f2 = eq2.test_space_dict[1]
-    g = eq1.trial_space_dict[1].spatialbasis ⊗ temporalbasis(eq1.trial_space_dict[1])
+    g = eq1.trial_space_dict[1].spatialBasis ⊗ temporalbasis(eq2.trial_space_dict[1])
     idST = BEAST.Identity()⊗BEAST.Identity()
     Ġ = BEAST.assemble(idST, f1, h1)
     G_j = BEAST.assemble(idST, f2, g)
@@ -303,5 +317,35 @@ function td_solve_cq(eq1::BEAST.DiscreteEquation, eq2::BEAST.DiscreteEquation)
     if typeof(eq2.equation.rhs.terms[1].functional)==ConductivityTDFunc
         G_nl = BEAST.assemble(idST, f2, h)
         return marchonintimenl(eq1, eq2, Z, b, Ġ, G_j, G_nl, Nt)
+    end
+end
+
+function td_solve_augmented(eq1::BEAST.DiscreteEquation, cq=true)
+    X = _spacedict_to_directproductspace(eq1.test_space_dict)
+    Y = _spacedict_to_directproductspace(eq1.trial_space_dict)
+    Z = assemble(eq1.equation.lhs, X, Y)
+    if cq
+        Δt = eq1.trial_space_dict[1].time.timestep
+        Nt = eq1.trial_space_dict[1].time.numfunctions
+        X = eq1.trial_space_dict[1].space
+        Y = eq1.trial_space_dict[2].space
+        V = BEAST.FiniteDiffTimeStep(X, Δt, Nt)
+        W = BEAST.FiniteDiffTimeStep(Y, Δt, Nt)
+        LaplaceTs(s::T) where {T} = MWSingleLayer3D(s/c, -s*s/c, T(0.0))
+        LaplaceTh(s::T) where {T} = AugmentedMaxwellOperator3D(s/c, T(0.0), -s*c)
+        LaplaceDiv(s::T) where {T} = DivergenceOp(false, true)
+        LaplaceDiff(s::T) where {T} = s*Identity()
+        kmax = 30
+        rho = 1.0001
+        method = BEAST.BE(Δt)
+        Ts_cq = BEAST.FiniteDiffConvolutionQuadrature(LaplaceTs, method, Δt, kmax, rho)
+        Th_cq = BEAST.FiniteDiffConvolutionQuadrature(LaplaceTh, method, Δt, kmax, rho)
+        Div_cq = BEAST.FiniteDiffConvolutionQuadrature(LaplaceDiv, method, Δt, kmax, rho)
+        Diff_cq = BEAST.FiniteDiffConvolutionQuadrature(LaplaceDiff, method, Δt, kmax, rho)
+        return Ts_cq, Th_cq, Div_cq, Diff_cq
+        #= Z_Ts = BEAST.assemble(Ts_cq, V, V)
+        Z_Th = BEAST.assemble(Th_cq, V, W)
+        Z_Div = BEAST.assemble(Div_cq, W, V)
+        Z_Diff = BEAST.assemble(Diff_cq, W, W) =#
     end
 end
