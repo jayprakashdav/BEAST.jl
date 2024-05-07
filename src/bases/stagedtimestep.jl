@@ -19,6 +19,19 @@ struct StagedTimeStep{T, N, NN, I}
 	contourRadius         :: T
 end
 
+"""
+	FiniteDiffTimeStep{T,N,NN}
+
+To be used to single step finite difference method schemes such as 
+the backward euler or backward difference formula 2
+
+"""
+
+struct FiniteDiffTimeStep{T}
+	Δt::T
+	Nt::Int
+end
+
 scalartype(sts :: StagedTimeStep{T, N, NN, I}) where {T, N, NN, I} = T
 temporalbasis(sts :: StagedTimeStep{T, N, NN, I}) where {T, N, NN, I} = timebasisdelta(sts.Δt, sts.Nt)
 
@@ -26,3 +39,6 @@ numfunctions(s::StagedTimeStep) = s.Nt
 
 numstages(s) = 1
 numstages(s::StagedTimeStep) = size(s.c,1)
+
+scalartype(fdts :: FiniteDiffTimeStep{T}) where {T} = T
+temporalbasis(fdts :: FiniteDiffTimeStep{T}) where {T} = timebasisdelta(fdts.Δt, fdts.Nt)

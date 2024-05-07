@@ -48,6 +48,30 @@ function lagrangecxd0(mesh)
   LagrangeBasis{0,-1,NF}(geometry, fns, pos)
 end
 
+function lagrangecxd1(mesh)
+
+    U = universedimension(mesh)
+    D1 = dimension(mesh)+1
+    T = coordtype(mesh)
+    geometry = mesh
+    num_cells = numcells(mesh)
+
+    # create the local shapes
+    fns = Vector{Vector{Shape{T}}}(undef,3*num_cells)
+    pos = Vector{vertextype(mesh)}(undef,3*num_cells)
+    for (i,cell) in enumerate(mesh)
+        fns[3*i-2] = [Shape(i, 1, T(1.0))]
+        fns[3*i-1] = [Shape(i, 2, T(1.0))]
+        fns[3*i]   = [Shape(i, 3, T(1.0))]
+        pos[3*i-2] = cartesian(center(chart(mesh, cell)))
+        pos[3*i-1] = cartesian(center(chart(mesh, cell)))
+        pos[3*i]   = cartesian(center(chart(mesh, cell)))
+    end
+
+  NF = 3
+  LagrangeBasis{1,-1,NF}(geometry, fns, pos)
+end
+
 """
     unitfunctioncxd0(mesh)
 

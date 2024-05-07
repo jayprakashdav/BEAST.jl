@@ -14,6 +14,12 @@ struct MWSingleLayer3D{T,U} <: MaxwellOperator3D{T,U}
   β::U
 end
 
+struct AugmentedMaxwellOperator3D{T, K} <: MaxwellOperator3D{T,K}
+    gamma::T
+    α::K
+    β::K
+end
+
 gamma(op::MWSingleLayer3D{Val{0}, U}) where {U} = zero(U)
 
 scalartype(op::MWSingleLayer3D{T,U}) where {T,U} = promote_type(T,U)
@@ -223,6 +229,24 @@ function (igd::Integrand{<:MWDoubleLayer3DReg})(x,y,f,g)
     gvalue = getvalue(g)
     G = cross.(Ref(gradgreen), gvalue)
     return _krondot(fvalue, G)
+end
+
+function (igd::Integrand{<:AugmentedMaxwellOperator3D})(x,y,f,g)
+	α = igd.operator.α
+    β = igd.operator.β
+    γ = igd.operator.gamma
+
+    r = cartesian(x) - cartesian(y)
+    R = norm(r)
+    iR = 1 / R
+    green = exp(-γ*R)*(i4pi*iR)
+
+    αG = α * green
+    βG = β * green
+
+    _integrands(f,g) do fi,gj
+        βG * dot(fi.divergence, gj.value)
+    end
 end
 
 ################################################################################
