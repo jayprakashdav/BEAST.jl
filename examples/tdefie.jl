@@ -4,7 +4,7 @@ using CompScienceMeshes, BEAST, LinearAlgebra
 
 X = raviartthomas(Γ)
 
-Δt = 0.1
+Δt = 2.0
 Nt = 200
 T = timebasisshiftedlagrange(Δt, Nt, 3)
 U = timebasisdelta(Δt, Nt)

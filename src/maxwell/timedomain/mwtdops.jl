@@ -13,6 +13,25 @@ mutable struct MWSingleLayerTDIO{T} <: RetardedPotential{T}
     hs_diffs::Int
 end
 
+"""
+    This struct acts as a marker for dispatching the assemble function
+    for a mix of vector and scalar basis functions needed in solving of 
+    the augmented version of the electric field integral equation
+
+"""
+mutable struct AMWSingleLayerTDIO{T} <: RetardedPotential{T}
+    "speed of light in medium"
+    speed_of_light::T
+    "weight of the weakly singular term"
+    ws_weight::T
+    "weight of the hypersingular term"
+    hs_weight::T
+    "number of temporal differentiations in the weakly singular term"
+    ws_diffs::Int
+    "number of temporal differentiations in the hyper singular term"
+    hs_diffs::Int
+end
+
 function Base.:*(a::Number, op::MWSingleLayerTDIO)
 	@info "scalar product a * op (SL)"
 	MWSingleLayerTDIO(
@@ -75,6 +94,7 @@ end # module TDMaxwell3D
 export TDMaxwell3D
 
 defaultquadstrat(::MWSingleLayerTDIO, tfs, bfs) = OuterNumInnerAnalyticQStrat(3)
+defaultquadstrat(::AMWSingleLayerTDIO, tfs, bfs) = OuterNumInnerAnalyticQStrat(3)
 
 function quaddata(op::MWSingleLayerTDIO, testrefs, trialrefs, timerefs,
         testels, trialels, timeels, quadstrat::OuterNumInnerAnalyticQStrat)

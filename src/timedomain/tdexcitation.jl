@@ -43,10 +43,15 @@ end
 function assemble(exc::TDFunctional, testST; quaddata=quaddata, quadrule=quadrule)
     
     stagedtimestep = isa(temporalbasis(testST), BEAST.StagedTimeStep)
+    finitedifftimestep = isa(temporalbasis(testST), BEAST.FiniteDiffTimeStep)
     if stagedtimestep
         return staged_assemble(exc, testST; quaddata=quaddata, quadrule=quadrule)
     end
-    
+
+    if finitedifftimestep
+        return finitediff_assemble(exc, testST; quaddata=quaddata, quadrule=quadrule)
+    end
+
     testfns = spatialbasis(testST)
     timefns = temporalbasis(testST)
     Z = zeros(eltype(exc), numfunctions(testfns), numfunctions(timefns))
@@ -71,6 +76,19 @@ function staged_assemble(exc::TDFunctional, testST::SpaceTimeBasis;
         assemble!(exc, testfns ⊗ tbsd, store,
             quaddata=quaddata, quadrule=quadrule)
     end
+    return Z
+end
+
+function finitediff_assemble(exc::TDFunctional, testST::SpaceTimeBasis; 
+    quaddata=quaddata, quadrule=quadrule)
+
+    spatialBasis = testST.space
+    Nt = testST.time.Nt
+    Δt = testST.time.Δt
+    Z = zeros(eltype(exc), numfunctions(spatialBasis), Nt)
+    store(v,m,k) = (Z[m,k] += v)
+    tbs = timebasisdelta(Δt, Nt)
+    assemble!(exc, spatialBasis ⊗ tbs, store, quaddata=quaddata, quadrule=quadrule)
     return Z
 end
 

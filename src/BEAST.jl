@@ -187,6 +187,7 @@ include("multiplicativeop.jl")
 include("identityop.jl")
 include("integralop.jl")
 include("dyadicop.jl")
+include("divergenceop.jl")
 include("interpolation.jl")
 
 include("quadrature/doublenumqstrat.jl")
@@ -207,8 +208,10 @@ include("timedomain/tdexcitation.jl")
 include("timedomain/motlu.jl")
 include("timedomain/tdtimeops.jl")
 include("timedomain/rkcq.jl")
+include("timedomain/finitediffcq.jl")
 include("timedomain/zdomain.jl")
 include("timedomain/td_symmetric_quadstrat.jl")
+include("timedomain/augmentedefiemot.jl")
 
 
 # Support for Maxwell equations
@@ -252,6 +255,7 @@ include("helmholtz3d/timedomain/tdhh3dpp.jl")
 include("maxwell/timedomain/mwtdops.jl")
 include("maxwell/timedomain/mwtdexc.jl")
 include("maxwell/timedomain/tdfarfield.jl")
+include("maxwell/timedomain/conductivity.jl")
 
 include("utils/butchertableau.jl")
 include("utils/variational.jl")
@@ -259,6 +263,7 @@ include("utils/variational.jl")
 include("solvers/solver.jl")
 include("solvers/lusolver.jl")
 include("solvers/itsolver.jl")
+include("solvers/nonlinearmot.jl")
 
 include("utils/plotlyglue.jl")
 

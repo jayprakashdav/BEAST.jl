@@ -277,14 +277,14 @@ function td_solve(eq1::BEAST.DiscreteEquation, eq2::BEAST.DiscreteEquation, cq=f
         Nt = eq1.trial_space_dict[1].time.numfunctions
         X = eq1.trial_space_dict[1].space
         Y = eq2.trial_space_dict[1].space
-        V = BEAST.FiniteDiffTimeStep(X, Δt, Nt)
-        W = BEAST.FiniteDiffTimeStep(Y, Δt, Nt)
-        c=1.0
-        LaplaceEFIO(s::T) where {T} = MWSingleLayer3D(s/c, -s*s/c, T(-c))
         kmax = 30
         rho = 1.0001
         method = BEAST.BE(Δt)
-        SLcq = BEAST.FiniteDiffConvolutionQuadrature(LaplaceEFIO, method, Δt, kmax, rho)
+        V = BEAST.FiniteDiffTimeStep(Δt, Nt, kmax, rho, method)
+        W = BEAST.FiniteDiffTimeStep(Δt, Nt, kmax, rho, method)
+        c=1.0
+        LaplaceEFIO(s::T) where {T} = MWSingleLayer3D(s/c, -s*s/c, T(-c))
+        SLcq = BEAST.FiniteDiffConvolutionQuadrature(LaplaceEFIO)
         Z = BEAST.assemble(SLcq, V, V)
         #= LaplaceId(s::T) where {T} = s*Identity()
         kmax = 10
@@ -323,29 +323,23 @@ end
 function td_solve_augmented(eq1::BEAST.DiscreteEquation, cq=true)
     X = _spacedict_to_directproductspace(eq1.test_space_dict)
     Y = _spacedict_to_directproductspace(eq1.trial_space_dict)
-    Z = assemble(eq1.equation.lhs, X, Y)
+    #Z = assemble(eq1.equation.lhs, X, Y)
     if cq
-        Δt = eq1.trial_space_dict[1].time.Δt
-        Nt = eq1.trial_space_dict[1].time.Nt
-        X = eq1.trial_space_dict[1].space
-        Y = eq1.trial_space_dict[2].space
-        V = X ⊗ BEAST.FiniteDiffTimeStep(Δt, Nt)
-        W = Y ⊗ BEAST.FiniteDiffTimeStep(Δt, Nt)
+        V = eq1.trial_space_dict[1]
+        W = eq1.test_space_dict[1]
+        Δt = V.time.Δt
+        Nt = V.time.Nt
         LaplaceTs(s::T) where {T} = MWSingleLayer3D(s/c, -s*s/c, T(0.0))
         LaplaceTh(s::T) where {T} = AugmentedMaxwellOperator3D(s/c, T(0.0), -s*c)
-        LaplaceDiv(s::T) where {T} = DivergenceOp(false, true)
-        LaplaceDiff(s::T) where {T} = s*Identity()
-        kmax = 30
-        rho = 1.0001
-        method = BEAST.BE(Δt)
-        Ts_cq = BEAST.FiniteDiffConvolutionQuadrature(LaplaceTs, method, Δt, kmax, rho)
-        Th_cq = BEAST.FiniteDiffConvolutionQuadrature(LaplaceTh, method, Δt, kmax, rho)
-        Div_cq = BEAST.FiniteDiffConvolutionQuadrature(LaplaceDiv, method, Δt, kmax, rho)
-        Diff_cq = BEAST.FiniteDiffConvolutionQuadrature(LaplaceDiff, method, Δt, kmax, rho)
-        return Ts_cq, Th_cq, Div_cq, Diff_cq
-        #= Z_Ts = BEAST.assemble(Ts_cq, V, V)
+        Div_cq = DivergenceOp(false, true)
+        Id = Identity()
+        Ts_cq = TDMaxwell3D.singlelayer(speedoflight=1.0, numdiffs=1)
+        Th_cq = BEAST.AMWSingleLayerTDIO(1.0,1.0,1.0,0,2)
+        Z_Ts = BEAST.assemble(Ts_cq, V, V)
         Z_Th = BEAST.assemble(Th_cq, V, W)
-        Z_Div = BEAST.assemble(Div_cq, W, V)
-        Z_Diff = BEAST.assemble(Diff_cq, W, W) =#
+        Z_Div = BEAST.assemble(Div_cq, W.space, V.space)
+        Z_Diff = BEAST.assemble(Id, W.space, W.space)/Δt
+        B = BEAST.assemble(eq1.equation.rhs, eq1.trial_space_dict)
+        return marchonintimeaug(Z_Ts, Z_Th, Z_Div, Z_Diff, B)
     end
 end

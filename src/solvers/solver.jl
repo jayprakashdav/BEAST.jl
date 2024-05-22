@@ -155,7 +155,8 @@ function assemble(lform::LinForm, X::DirectProductSpace)
     spaceTimeBasis = isa(x, BEAST.SpaceTimeBasis)
     if spaceTimeBasis
         stagedtimestep = isa(x.time, BEAST.StagedTimeStep)
-        if stagedtimestep
+        finitedifftimestep = isa(x.time, BEAST.StagedTimeStep)
+        if stagedtimestep | finitedifftimestep
             stages = numstages(x.time)
             stagednumfunctions(X) = stages * numfunctions(X)
             U = NestedUnitRanges.nestedrange(spatialbasis(X), 1, stagednumfunctions)
