@@ -30,10 +30,8 @@ function laplacekernel(op::FiniteDiffConvolutionQuadrature, s, T)
 	ws_diffs = op.timedomainkernel.ws_diffs
 	hs_diffs = op.timedomainkernel.hs_diffs
 	if isa(op.timedomainkernel, MWSingleLayerTDIO)
-		@info "converting time domain single layer operator to laplace domain"
 		return MWSingleLayer3D(s/c, ws_weight*s^ws_diffs/c, hs_weight*s^hs_diffs*T(c))
 	elseif isa(op.timedomainkernel, AMWSingleLayerTDIO)
-		@info "converting scalar potential part of the time domain single layer to laplace domain"
 		return AugmentedMaxwellOperator3D(s/c, ws_weight*s^ws_diffs*T(1.0), hs_weight*s^hs_diffs*T(c))
 	end
 end
@@ -69,7 +67,7 @@ function assemble(cqop :: FiniteDiffConvolutionQuadrature,
 			Zz[q+1] = assemble(LaplaceOp(s), test_spatial_basis, trial_spatial_basis)
 		end
 	elseif threading.parameters[1]==:multi
-		@info "multi threading assembly"
+		@info "multi threaded assembly"
 		T = Threads.nthreads()
 		Qsplits = [round(Int, s) for s in range(0, stop=Qmax, length=T+1)]
 		#function that correctly stores the computed values of Z for each Q
@@ -86,11 +84,28 @@ function assemble(cqop :: FiniteDiffConvolutionQuadrature,
 	T = real(Tz)
 	Z = zeros(T, M, N, kmax)
 	#return Zz
-	print("Inverse z transform dots out of 10:")
-	for q = 0:kmax-1
-		Z[:,:,q+1] = real_inverse_z_transform(q, rho, Q, Zz)
-		isinteger((q+1)*10/kmax) ? print(".") : nothing
+	
+
+	if threading.parameters[1]==:single
+		@info "single threaded inv z transform"
+		print("dots out of 10:")
+		for q = 0:kmax-1
+			Z[:,:,q+1] = real_inverse_z_transform(q, rho, Q, Zz)
+			isinteger((q+1)*10/kmax) ? print(".") : nothing
+		end
+	elseif threading.parameters[1]==:multi
+		@info "multi threaded inv z transform"
+		T = Threads.nthreads()
+		Ksplits = [round(Int, s) for s in range(0, stop=Qmax, length=T+1)]
+		Threads.@threads for idx in 1:T
+			for q = Ksplits[idx]:Ksplits[idx+1]-1
+				Z[:,:,q+1] = real_inverse_z_transform(q, rho, Q, Zz)
+				isinteger((q+1)*10/kmax) ? print(".") : nothing
+			end
+		end
 	end
+
+
 	return ConvolutionOperators.DenseConvOp(Z)
 
 end
