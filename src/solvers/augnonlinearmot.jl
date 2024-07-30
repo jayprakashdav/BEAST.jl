@@ -1,101 +1,116 @@
-function td_solve_augmented(eq1::BEAST.DiscreteEquation, eq2::BEAST.DiscreteEquation, cq=true)
-    X = _spacedict_to_directproductspace(eq1.test_space_dict)
-    Y = _spacedict_to_directproductspace(eq1.trial_space_dict)
-    #Z = assemble(eq1.equation.lhs, X, Y)
-    if cq
-        V = eq1.trial_space_dict[1]
-        W = eq1.test_space_dict[1]
-        Δt = V.time.Δt
-        Nt = V.time.Nt
-        LaplaceTs(s::T) where {T} = MWSingleLayer3D(s/c, -s*s/c, T(0.0))
-        LaplaceTh(s::T) where {T} = AugmentedMaxwellOperator3D(s/c, T(0.0), -s*c)
-        Div_cq = DivergenceOp(false, true)
-        Id = Identity()
-        Ts_cq = TDMaxwell3D.singlelayer(speedoflight=1.0, numdiffs=1)
-        Ts_cq.hs_weight=0.0
-        Th_cq = BEAST.AMWSingleLayerTDIO(1.0,1.0,1.0,0,2)
-        Z_Ts = BEAST.assemble(Ts_cq, V, V)
-        Z_Th = BEAST.assemble(Th_cq, W, V)
-        Z_Div = BEAST.assemble(Div_cq, W.space, V.space)
-        Z_Diff = BEAST.assemble(Id, W.space, W.space)/Δt
-        B = BEAST.assemble(eq1.equation.rhs, eq1.trial_space_dict)
-        return motnlaug(Z_Ts, Z_Th, Z_Div, Z_Diff, B)#march on time nonlinear augmented
-    end
+function td_nl_solve_augmented(Ts, Th, E, s, tfs, bfs)
+    Δt = bfs[1].time.Δt
+    Nt = bfs[1].time.Nt
+    nrows = cumsum(numfunctions.(spatialbasis.(tfs)))
+    ncols = cumsum(numfunctions.(spatialbasis.(bfs)))
+
+    Zs = BEAST.assemble(Ts, tfs[1], bfs[1])
+    Zs0=BEAST.ConvolutionOperators.timeslice(Zs,1)
+    Zh = BEAST.assemble(Th, tfs[1], bfs[2])
+    Zh0=BEAST.ConvolutionOperators.timeslice(Zh,1)
+    
+    M = zeros(Float64, sum(nrows), sum(ncols))
+    M[1:nrows[1], 1:ncols[1]] = Zs0 #M[1,1]
+    M[1:nrows[1], ncols[1]+1:ncols[2]] = Zh0 #M[1,2]
+    
+    Div = DivergenceOp(false, true)
+    Z_div = BEAST.assemble(Div, tfs[2].space, bfs[1].space)
+    Z_diff = BEAST.assemble(Identity(), tfs[2].space, bfs[2].space)/Δt
+    
+    Ge = BEAST.assemble(Identity(), tfs[1].space, bfs[3].space)/Δt
+    Gj = BEAST.assemble(Identity(), tfs[3].space, bfs[1].space)
+    
+    M[1:nrows[1], ncols[2]+1:ncols[3]] = Ge #M[1,3]
+    M[nrows[1]+1:nrows[2], 1:ncols[1]] = Z_div #M[2,1]
+    M[nrows[1]+1:nrows[2], ncols[1]+1:ncols[2]] = Z_diff #M[2,2]
+    M[nrows[2]+1:nrows[3], 1:ncols[1]] = Gj #M[3,1]
+
+    B = BEAST.assemble(E, tfs[1])
+    return motnlaug(M, Zs, Zh, Z_diff, Ge, Gj, B, s, tfs, bfs) #march on time nonlinear augmented
 end
 
-function marchonintimenl(eq1, eq2,  Z, inc, Ġ, G_j, G_nl, Nt)
-    Z0 = zeros(eltype(Z), size(Z)[1:2])
-    BEAST.ConvolutionOperators.timeslice!(Z0,Z,1)
-    Ġ0 = zeros(eltype(Ġ), size(Ġ)[1:2])
-    BEAST.ConvolutionOperators.timeslice!(Ġ0,Ġ,1) 
-    G_j0 = G_j.data[1,:,:]
-    G_nl0 = G_nl.data[1,:,:]
-    T = eltype(Z0)
-    M,N = size(Z0)
-    Me,Ne = size(Ġ0)
-    V0 = zeros(N+Ne,N+Ne)
-    V0[1:N, 1:N] = Z0
-    V0[1:N, N+1:N+Ne] = -Ġ0
-    V0[N+1:N+Ne, 1:N] = G_j0
-    sol = zeros(2*N)
-    xj_all = zeros(N)
-    xe_all = zeros(N)
-    @assert M == size(inc,1)
-    xj = zeros(T,N,Nt)
-	xe = zeros(T,Ne,Nt)
-	xeprev = zeros(T,N)
-    yj = zeros(T,N)
-	ye = zeros(T,N)
+function motnlaug(M, Zs, Zh, Z_diff, Ge, Gj, B, s,tfs, bfs)
+    nrows = cumsum(numfunctions.(spatialbasis.(tfs)))
+    ncols = cumsum(numfunctions.(spatialbasis.(bfs)))
+    
+    T = scalartype(bfs[1])
+    sol = zeros(T,sum(ncols)-1)
+    xj = zeros(T,numfunctions(bfs[1].space),Nt)
+    xq = zeros(T,numfunctions(bfs[2].space),Nt)
+	xe = zeros(T,numfunctions(bfs[3].space),Nt)
+    
+    xqprev = zeros(T,numfunctions(bfs[2].space))
+	xeprev = zeros(T,numfunctions(bfs[3].space))
+    
+    yj = zeros(T,numfunctions(tfs[1].space))
+    yq = zeros(T,numfunctions(tfs[1].space))
+	ye = zeros(T,numfunctions(tfs[1].space))
+    
     jk_start = 2
+    qk_start = 2
     ek_start = 2
     jk_stop = Nt
+    qk_stop = Nt
     ek_stop = BEAST.numfunctions(eq2.trial_space_dict[1].time)+1
-    csxj = zeros(T,N,Nt)
-    csxe = zeros(T,Ne,Nt)
-    σ = eq2.equation.rhs.terms[1].functional
-    σop = BEAST.ConductivityTDOp(σ)
-    bσ = zeros(T, N)
-    iZ = BEAST.GMRESSolver(Z0, restart=0, reltol=1e-6)
+    csxj = zeros(T,numfunctions(bfs[1].space),Nt)
+    csxq = zeros(T,numfunctions(bfs[2].space),Nt)
+    csxe = zeros(T,numfunctions(bfs[3].space),Nt)
+    
+    se = BEAST.ConductivityTDOp(s)
+    sq = BEAST.ConductivityTDOpch(s)
+
+    bs = zeros(T, N)
+    #= iZ = BEAST.GMRESSolver(Z0, restart=0, reltol=1e-6)
     invZ = inv(Z0)
     C1 = G_j0*invZ
-    C2 = C1*Ġ0
+    C2 = C1*Ġ0 =#
     #= try =#
     for i in 1:Nt
         println(i)
         R = inc[:,i]
         fill!(yj,0)
         fill!(ye,0)
-        BEAST.ConvolutionOperators.convolve!(yj,Z,xj,csxj,i,jk_start,jk_stop)
-        BEAST.ConvolutionOperators.convolve!(ye,Ġ,xe,csxe,i,ek_start,ek_stop)
+        BEAST.ConvolutionOperators.convolve!(yj,Zs,xj,csxj,i,jk_start,jk_stop)
+        BEAST.ConvolutionOperators.convolve!(yq,Zh,xq,csxq,i,qk_start,qk_stop)
+        if i>1 
+            ye = Ge*xe[:,i-1]
+        end
         iter_max = 100
         for l in 1:iter_max
-            if l==1
-                if i==1
-                    i=2
-                end
+            if (l==1) && (i>1)
                 xeprev = xe[:,i-1]
-                update!(σ, xj, xe, i-1, eq1, eq2)
+                xqprev = xr[:,i-1]
+                update!(s, xj, xq, xe, i-1, tfs, bfs)
             else
                 xeprev = xe[:,i]
-                update!(σ, xj, xe, i, eq1, eq2)
+                xqprev = xq[:,i]
+                update!(s, xj, xq, xe, i, tfs, bfs)
             end
-            bσ = BEAST.assemble(σ, eq2.test_space_dict[1].space)
-            Q = BEAST.assemble(σop, eq2.test_space_dict[1].space, eq2.trial_space_dict[1].space)
-            rhs1 = R - yj + ye
-            rhs2 = bσ - Q*xeprev
-            V0[N+1:N+Ne,N+1:N+Ne] = -Q
-            b = [rhs1; rhs2]
+            
+            Qe = BEAST.assemble(se, tfs[3].space, bfs[3].space)
+            Qq = BEAST.assemble(sq, tfs[3].space, bfs[2].space)
+            M[nrows[2]+1:nrows[3], ncols[1]+1:ncols[2]] = Qq #M[3,2]
+            M[nrows[2]+1:nrows[3], ncols[2]+1:ncols[3]] = Qe #M[3,3]
+
+            bs = BEAST.assemble(s, tfs[3])
+            rhs1 = R - yj - yq + ye
+            rhs2 = Z_diff*xq[:,i-1]
+            rhs3 = bs + Qe*xeprev + Qq*xqprev
+            b = [rhs1; rhs2; rhs3]
+            
             sol = inv(Matrix(V0))*b
-            xj[:,i] = sol[1:N]
-            xe[:,i] = sol[N+1:end]
+
+            xj[:,i] = sol[1:ncols[1]] #currents
+            xq[:,i] = sol[ncols[1]+1:ncols[2]] #charges
+            xe[:,i] = sol[ncols[2]+1:ncols[3]] #electric fields
+
             #= rhs1 = R - yj + ye
             rhs2 = bσ - Q*xeprev - C1*rhs1
             iw = BEAST.GMRESSolver(C2-Q, restart=0, reltol=1e-6)
             u, ch = solve(iw, rhs2)
             xe[:,i] .= u
             xj[:,i] .= invZ*(rhs1+Ġ0*xe[:,i]) =#
-            #xe_all = hcat(xe_all, xe[:,i])
-            #xj_all = hcat(xj_all, xj[:,i])
+
             println("norm xe ", norm(xe[:,i]-xeprev)/M)
             if norm(xe[:,i]-xeprev)/M < 1e-4
                 break
@@ -107,14 +122,16 @@ function marchonintimenl(eq1, eq2,  Z, inc, Ġ, G_j, G_nl, Nt)
         end
         if i > 1
             csxj[:,i] .= csxj[:,i-1] .+ xj[:,i]
+            csxq[:,i] .= csxq[:,i-1] .+ xq[:,i]
             csxe[:,i] .= csxe[:,i-1] .+ xe[:,i]
         else
             csxj[:,i] .= xj[:,i]
+            csxq[:,i] .= xq[:,i]
             csxe[:,i] .= xe[:,i]
         end
         (i % 10 == 0) && print(i, "[", Nt, "] - ")
     end
-    return xj, xe, xj_all, xe_all
+    return xj, xq, xe
     #= catch e
         return xj, xe, xj_all, xe_all
     end =#

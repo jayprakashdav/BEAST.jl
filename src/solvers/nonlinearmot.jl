@@ -1,3 +1,23 @@
+function update!(op::ConductivityTD_Functionaltype, xj, xq, xe, k, tfs, bfs)
+    tgeo = BEAST.geometry(tfs[1].space)
+    bgeo = BEAST.geometry(bfs[1].space)
+    #= V1 = eq1.trial_space_dict[1].spatialBasis ⊗ temporalbasis(eq2.trial_space_dict[1])
+    V2 = eq2.trial_space_dict[1]
+    W2 = eq2.test_space_dict[1] =#
+    ecoeffs = xe[:,k]
+    qcoeffs = xq[:,k]
+    if CompScienceMeshes.refines(tgeo, bgeo)
+        @warn "support for refines not available"
+        #op.efield = quadpoint_field_refines(op, ecoeffs, k, tfs[3].space, bfs[3].space)
+        #op.jflux = quadpoint_field_refines(op, jcoeffs, k, W2, V1)
+        #op.charge = quadpoint_field_refines(op, qcoeffs, k, tfs[3].space, bfs[2].space)
+    else
+        op.efield = quadpoint_field_cq(op, ecoeffs, tfs[3].space, bfs[3].space)
+        #op.jflux = quadpoint_field(op, jcoeffs, k, W2, V1)
+        op.charge = quadpoint_field_cq(op, qcoeffs, tfs[3].space, bfs[2].space)
+    end	
+end
+
 function update!(op::ConductivityTD_Functionaltype, jcoeffs, ecoeffs, k, eq1, eq2)
     tgeo = BEAST.geometry(eq2.test_space_dict[1].space)
     bgeo = BEAST.geometry(eq2.trial_space_dict[1].space)
@@ -121,7 +141,7 @@ function quadpoint_field_refines(biop::ConductivityTD_Functionaltype, coeffs, k,
         return field
 end
 
-function quadpoint_field(biop::ConductivityTD_Functionaltype, coeffs, k, tfs, bfs;
+#= function quadpoint_field(biop::ConductivityTD_Functionaltype, coeffs, k, tfs, bfs;
     quadstrat=BEAST.defaultquadstrat(biop, tfs.space, bfs.space))
 
     trefs = BEAST.refspace(tfs.space)
@@ -139,10 +159,12 @@ function quadpoint_field(biop::ConductivityTD_Functionaltype, coeffs, k, tfs, bf
     for (i,j) in enumerate(ba2g) bg2a[j] = i end
 
     qd = BEAST.quaddata(biop, trefs, brefs, tels, bels, quadstrat)
-    T = eltype(coeffs)
+    #= T = eltype(coeffs)
     D = dimension(BEAST.geometry(bfs.space))
     U = D+1
-    PT = SVector{U, T}
+    PT = SVector{U, T} =#
+    vals = brefs(center(first(bels)))
+    PT = typeof(first(coeffs)*vals[1][1])
     field = zeros(PT, (length(tels),length(qd[1])))
     btcell = btels[k]
     for (p,bcell) in enumerate(bels)   
@@ -160,6 +182,48 @@ function quadpoint_field(biop::ConductivityTD_Functionaltype, coeffs, k, tfs, bf
                             field[p,qi] += (coeffs[m,n] * tfx * b) * a * fx
                         end
                     end
+                end
+            end
+        end
+    end
+    return field
+end =#
+
+function quadpoint_field_cq(biop::ConductivityTD_Functionaltype, coeffs, tf, bf;
+    quadstrat=BEAST.defaultquadstrat(biop, tf, bf))
+
+    trefs = BEAST.refspace(tf)
+    brefs = BEAST.refspace(bf)
+    #btrefs = BEAST.refspace(bf.time)
+
+    numbrefs = BEAST.numfunctions(brefs)
+    #numbtrefs = BEAST.numfunctions(btrefs)
+
+    tels, tad, ta2g = BEAST.assemblydata(tf)
+    bels, bad, ba2g = BEAST.assemblydata(bf)
+    #btels, btad = BEAST.assemblydata(bf.time)
+
+    bg2a = zeros(Int, length(BEAST.geometry(bf)))
+    for (i,j) in enumerate(ba2g) bg2a[j] = i end
+
+    qd = BEAST.quaddata(biop, trefs, brefs, tels, bels, quadstrat)
+    #= T = eltype(coeffs)
+    D = dimension(BEAST.geometry(bfs.space))
+    U = D+1
+    PT = SVector{U, T} =#
+    vals = brefs(center(first(bels)))
+    PT = typeof(first(coeffs)*vals[1][1])
+    field = zeros(PT, (length(tels),length(qd[1])))
+    #btcell = btels[k]
+    for (p,bcell) in enumerate(bels)   
+        qr = BEAST.quadrule(biop, trefs, brefs, bcell, qd, quadstrat)
+        for (qi,qdpt) in enumerate(qr)
+            mp = carttobary(bcell, qdpt[2])
+            vals = brefs(neighborhood(bcell, mp))
+            for si in 1:numbrefs
+                fx = vals[si].value
+                for (m,a) in bad[p,si]
+                    field[p,qi] += coeffs[m]* a * fx
                 end
             end
         end
@@ -198,6 +262,7 @@ function marchonintimenl(eq1, eq2,  Z, inc, Ġ, G_j, G_nl, Nt)
     csxe = zeros(T,Ne,Nt)
     σ = eq2.equation.rhs.terms[1].functional
     σop = BEAST.ConductivityTDOp(σ)
+    σopch = BEAST.ConductivityTDOpch(σ)
     bσ = zeros(T, N)
     iZ = BEAST.GMRESSolver(Z0, restart=0, reltol=1e-6)
     invZ = inv(Z0)

@@ -5,28 +5,36 @@ abstract type ConductivityTD_Operatortype <: BEAST.LocalOperator end
 mutable struct ConductivityTDFunc <: ConductivityTD_Functionaltype
     chr::BEAST.Polynomial
     dchr::BEAST.Polynomial
+    ND::Float64 #Doping density
     numdiffs::Int
     efield::Array{SVector{3, Float64},2}
-    jflux::Array{SVector{3, Float64},2}
+    current::Array{SVector{3, Float64},2}
+    charge::Array{Float64,2}
 end
 
 mutable struct ConductivityTDOp <: ConductivityTD_Operatortype
     op::ConductivityTDFunc
 end
 
+mutable struct ConductivityTDOpch <: ConductivityTD_Operatortype
+    op::ConductivityTDFunc
+end
+
 scalartype(p::ConductivityTDFunc) = eltype(p.efield[1])
 scalartype(p::ConductivityTDOp) = eltype(p.op.efield[1])
+scalartype(p::ConductivityTDOpch) = eltype(p.op.efield[1])
 
 function conductivityfunc(chr::BEAST.Polynomial;numdiffs=0)
     dchr = derive(chr)
     efield = fill(SVector(0.0,0.0,0.0), (2,2))
-    charge = fill(SVector(0.0), (2,2))
-    ConductivityTDFunc(chr, dchr, numdiffs, efield, efield)
+    charge = fill(Float64(0.0), (2,2))
+    ConductivityTDFunc(chr, dchr, 1000.0, numdiffs, efield, efield, charge)
 end
 
 function (f::ConductivityTDFunc)(cell, cqdpt, mp)
     ei = f.efield[cell, cqdpt]
-    return f.chr(norm(ei))*ei
+    q = f.charge[cell, cqdpt]
+    return (f.ND-q)*f.chr(norm(ei))*ei
 end
 
 #= function (f::ConductivityTDFunc)(cell, cqdpt, mp)
@@ -35,11 +43,13 @@ end
     #return ei
     return ei*f.chr.(norm(ei))
 end =#
+const LinearScalarRefSpaceTriangle = Union{BEAST.LinearRefSpaceTriangle, LagrangeRefSpace}
 BEAST.integrand(::BEAST.ConductivityTD_Functionaltype, gx, ϕx) = gx[1] ⋅ ϕx
-BEAST.defaultquadstrat(::BEAST.ConductivityTD_Functionaltype, ::BEAST.LinearRefSpaceTriangle, ::BEAST.LinearRefSpaceTriangle) = BEAST.SingleNumQStrat(10)
+BEAST.defaultquadstrat(::BEAST.ConductivityTD_Functionaltype, ::BEAST.LinearScalarRefSpaceTriangle, ::BEAST.LinearScalarRefSpaceTriangle) = BEAST.SingleNumQStrat(10)
+BEAST.defaultquadstrat(::BEAST.ConductivityTD_Operatortype, ::BEAST.LinearScalarRefSpaceTriangle, ::BEAST.LinearScalarRefSpaceTriangle) = BEAST.SingleNumQStrat(10)
 BEAST.defaultquadstrat(::BEAST.ConductivityTD_Functionaltype, ::BEAST.Space) = BEAST.SingleNumQStrat(10)
 
-function quaddata(exc::BEAST.ConductivityTD_Functionaltype, g::BEAST.LinearRefSpaceTriangle, f::BEAST.LinearRefSpaceTriangle, tels, bels,
+function quaddata(exc::BEAST.ConductivityTD_Functionaltype, g::BEAST.LinearScalarRefSpaceTriangle, f::BEAST.LinearScalarRefSpaceTriangle, tels, bels,
     qs::BEAST.SingleNumQStrat)
 
     u, w = BEAST.trgauss(qs.quad_rule)
@@ -58,18 +68,47 @@ function quadrule(exc::BEAST.ConductivityTD_Functionaltype, ψ::BEAST.RefSpace, 
     return A
 end
 
+function quaddata(exc::BEAST.ConductivityTD_Operatortype, g::BEAST.LinearScalarRefSpaceTriangle, f::BEAST.LinearScalarRefSpaceTriangle, tels, bels,
+    qs::BEAST.SingleNumQStrat)
+
+    u, w = BEAST.trgauss(qs.quad_rule)
+    qd = [(w[i],SVector(u[1,i],u[2,i])) for i in 1:length(w)]
+    A = BEAST._alloc_workspace(qd, g, f, tels, bels)
+
+    return qd, A
+end
+
+function quadrule(exc::BEAST.ConductivityTD_Operatortype, ψ::BEAST.LinearScalarRefSpaceTriangle, ϕ::BEAST.LinearScalarRefSpaceTriangle, τ, (qd,A), qs::BEAST.SingleNumQStrat)
+    for i in eachindex(qd)
+        q = qd[i]
+        w, p = q[1], BEAST.neighborhood(τ,q[2])
+        A[i] = (w, p, ψ(p), ϕ(p))
+    end
+    return A
+end
+
 function kernelvals(f::ConductivityTDOp, mp, cell, cqdpt)
+    ei = f.op.efield[cell, cqdpt]
+    charge = f.op.charge[cell, cqdpt]
+    if norm(ei)==0
+        ei = 1e-9.+ei
+    end
+    derivative_wrt_electric_field = (f.op.ND-charge)*(f.op.dchr(norm(ei))*kron(ei, ei')/norm(ei)+(f.op.chr(norm(ei)))*I(3))
+    return derivative_wrt_electric_field
+end
+
+function kernelvals(f::ConductivityTDOpch, mp, cell, cqdpt)
     ei = f.op.efield[cell, cqdpt]
     if norm(ei)==0
         ei = 1e-9.+ei
     end
-    dsigma = f.op.dchr(norm(ei))*kron(ei, ei')/norm(ei)+(f.op.chr(norm(ei)))*I(3)
-    return dsigma
+    derivative_wrt_charge = -1*f.op.chr(norm(ei))*ei
+    return derivative_wrt_charge
 end
 
 BEAST.integrand(op::ConductivityTD_Operatortype, kernel, x, g, f) = dot(g[1],kernel*f[1])
 
-function assemble_local_matched!(biop::ConductivityTDOp, tfs::BEAST.Space, bfs::BEAST.Space, store;
+function assemble_local_matched!(biop::ConductivityTD_Operatortype, tfs::BEAST.Space, bfs::BEAST.Space, store;
     quadstrat=BEAST.defaultquadstrat(biop, tfs, bfs))
 
     tels, tad, ta2g = BEAST.assemblydata(tfs)
@@ -107,7 +146,7 @@ function assemble_local_matched!(biop::ConductivityTDOp, tfs::BEAST.Space, bfs::
     end
 end
 
-function cellinteractions(biop::ConductivityTDOp, trefs::U, brefs::V, cell, qr, p) where {U<:RefSpace{T},V<:RefSpace{T}} where {T}
+function cellinteractions(biop::ConductivityTD_Operatortype, trefs::U, brefs::V, cell, qr, p) where {U<:RefSpace{T},V<:RefSpace{T}} where {T}
 
     num_tshs = length(qr[1][3])
     num_bshs = length(qr[1][4])
@@ -135,7 +174,7 @@ function cellinteractions(biop::ConductivityTDOp, trefs::U, brefs::V, cell, qr, 
     return zlocal
 end
 
-function cellinteractions_matched!(zlocal, biop::ConductivityTDOp, trefs, brefs, cell, qr, p)
+function cellinteractions_matched!(zlocal, biop::ConductivityTD_Operatortype, trefs, brefs, cell, qr, p)
 
     num_tshs = length(qr[1][3])
     num_bshs = length(qr[1][4])

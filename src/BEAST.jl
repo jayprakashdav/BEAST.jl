@@ -264,6 +264,7 @@ include("solvers/solver.jl")
 include("solvers/lusolver.jl")
 include("solvers/itsolver.jl")
 include("solvers/nonlinearmot.jl")
+include("solvers/augnonlinearmot.jl")
 
 include("utils/plotlyglue.jl")
 
