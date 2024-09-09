@@ -44,5 +44,5 @@ numfunctions(s::FiniteDiffTimeStep) = s.Nt
 numstages(s) = 1
 numstages(s::StagedTimeStep) = size(s.c,1)
 
-scalartype(fdts :: FiniteDiffTimeStep{T,I}) where {T,I} = T
-temporalbasis(fdts :: FiniteDiffTimeStep{T,I}) where {T,I} = timebasisdelta(fdts.Δt, fdts.Nt)
+scalartype(fdts :: FiniteDiffTimeStep{T,U,V}) where {T,U,V} = T
+temporalbasis(fdts :: FiniteDiffTimeStep{T,U,V}) where {T,U,V} = timebasisdelta(fdts.Δt, fdts.Nt)

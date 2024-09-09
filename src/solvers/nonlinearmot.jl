@@ -141,7 +141,7 @@ function quadpoint_field_refines(biop::ConductivityTD_Functionaltype, coeffs, k,
         return field
 end
 
-#= function quadpoint_field(biop::ConductivityTD_Functionaltype, coeffs, k, tfs, bfs;
+function quadpoint_field(biop::ConductivityTD_Functionaltype, coeffs, k, tfs, bfs;
     quadstrat=BEAST.defaultquadstrat(biop, tfs.space, bfs.space))
 
     trefs = BEAST.refspace(tfs.space)
@@ -187,9 +187,9 @@ end
         end
     end
     return field
-end =#
+end
 
-function quadpoint_field_cq(biop::ConductivityTD_Functionaltype, coeffs, tf, bf;
+#= function quadpoint_field_cq(biop::ConductivityTD_Functionaltype, coeffs, tf, bf;
     quadstrat=BEAST.defaultquadstrat(biop, tf, bf))
 
     trefs = BEAST.refspace(tf)
@@ -230,7 +230,7 @@ function quadpoint_field_cq(biop::ConductivityTD_Functionaltype, coeffs, tf, bf;
     end
     return field
 end
-
+ =#
 function marchonintimenl(eq1, eq2,  Z, inc, Ġ, G_j, G_nl, Nt)
     Z0 = zeros(eltype(Z), size(Z)[1:2])
     BEAST.ConvolutionOperators.timeslice!(Z0,Z,1)
@@ -345,12 +345,12 @@ function td_solve(eq1::BEAST.DiscreteEquation, eq2::BEAST.DiscreteEquation, cq=f
         kmax = 30
         rho = 1.0001
         method = BEAST.BE(Δt)
-        V = BEAST.FiniteDiffTimeStep(Δt, Nt, kmax, rho, method)
+        V = X ⊗ BEAST.FiniteDiffTimeStep(Δt, Nt, kmax, rho, method)
         W = BEAST.FiniteDiffTimeStep(Δt, Nt, kmax, rho, method)
         c=1.0
-        LaplaceEFIO(s::T) where {T} = MWSingleLayer3D(s/c, -s*s/c, T(-c))
-        SLcq = BEAST.FiniteDiffConvolutionQuadrature(LaplaceEFIO)
-        Z = BEAST.assemble(SLcq, V, V)
+        #LaplaceEFIO(s::T) where {T} = MWSingleLayer3D(s/c, -s*s/c, T(-c))
+        #SLcq = BEAST.FiniteDiffConvolutionQuadrature(LaplaceEFIO)
+        Z = BEAST.assemble(eq1.equation.lhs.terms[1].kernel, V, V)
         #= LaplaceId(s::T) where {T} = s*Identity()
         kmax = 10
         Idcq = BEAST.FiniteDiffConvolutionQuadrature(LaplaceId, method, Δt, kmax, rho)
