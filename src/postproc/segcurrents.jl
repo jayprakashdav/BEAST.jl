@@ -53,3 +53,41 @@ function grideval(points, coeffs, basis; type=nothing)
     end
     return values
 end
+
+"""
+    gridevalmeshpoints(simplices, coeffs, basis; type=nothing)
+"""
+function gridevalmeshpoints(points, coeffs, basis; type=nothing)
+
+    # charts: active charts
+    # ad: assembly data (active_cell_idx, local_shape_idx) -> [dof1, dfo2, ...]
+    # ag: active_cell_idx -> global_cell_idx
+    charts, ad, ag = assemblydata(basis)
+    refs = refspace(basis)
+
+    V = valuetype(refs, eltype(charts))
+    T = promote_type(eltype(coeffs), eltype(V))
+    P = similar_type(V, T)
+
+    type != nothing && (P = type)
+
+    values = zeros(P, size(points))
+
+    chart_tree = BEAST.octree(charts)
+    for (j,point) in enumerate(points)
+        i = CompScienceMeshes.findchart(charts, chart_tree, point.cart)
+        if i != nothing
+            # @show i
+            chart = charts[i]
+            u = carttobary(chart, point.cart)
+            vals = refs(neighborhood(chart,u))
+            for r in 1 : numfunctions(refs)
+                for (m,w) in ad[i, r]
+                    values[j] += w * coeffs[m] * vals[r][1]
+                end
+            end
+            continue
+        end
+    end
+    return values
+end
