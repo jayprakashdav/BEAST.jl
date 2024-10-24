@@ -6,7 +6,7 @@ using SharedArrays
 using SparseArrays
 using FillArrays
 using BlockArrays
-using SparseMatrixDicts
+using ExtendableSparse
 
 using ConvolutionOperators
 using SauterSchwabQuadrature
@@ -18,6 +18,9 @@ using LiftedMaps
 using AbstractTrees
 using NestedUnitRanges
 
+using Infiltrator
+using TestItems
+
 import LinearAlgebra: cross, dot
 import LinearAlgebra: ×, ⋅
 
@@ -27,7 +30,7 @@ export dot
 
 export planewave
 export RefSpace, numfunctions, coordtype, scalartype, assemblydata, geometry, refspace, valuetype
-export lagrangecxd0, lagrangec0d1, duallagrangec0d1
+export lagrangecxd0, lagrangec0d1, duallagrangec0d1, unitfunctioncxd0, unitfunctionc0d1
 export duallagrangecxd0
 export lagdimension
 export restrict
@@ -37,8 +40,10 @@ export brezzidouglasmarini3d
 export nedelecd3d
 export nedelecc3d
 export portcells, rt_ports, getindex_rtg, subset
-export StagedTimeStep
-export subdsurface,subdBasis,assemblydata,refspace
+
+export StagedTimeStep, numstages
+export subdsurface, subdBasis, assemblydata, refspace
+
 export spatialbasis, temporalbasis
 export ⊗
 export timebasisc0d1
@@ -48,7 +53,7 @@ export timebasisshiftedlagrange
 export TimeBasisDeltaShifted
 export ntrace
 export strace
-export ttrace 
+export ttrace
 export SingleLayer
 export DoubleLayer
 export DoubleLayerTransposed
@@ -80,7 +85,7 @@ export curl
 export gradient
 export MWSingleLayerField3D
 export SingleLayerTrace
-export DoubleLayerRotatedMW3D
+export DoubleLayerRotatedMW3D, MWDoubleLayerRotatedFarField3D
 export MWSingleLayerPotential3D
 
 export VIEOperator
@@ -136,6 +141,23 @@ include("utils/combinatorics.jl")
 include("utils/linearspace.jl")
 include("utils/zeromap.jl")
 include("utils/rank1map.jl")
+include("utils/lagpolys.jl")
+
+include("bases/localbasis.jl")
+include("bases/local/laglocal.jl")
+include("bases/local/rtlocal.jl")
+include("bases/local/rt2local.jl")
+include("bases/local/ndlocal.jl")
+include("bases/local/nd2local.jl")
+include("bases/local/bdmlocal.jl")
+include("bases/local/ncrossbdmlocal.jl")
+include("bases/local/ndlcclocal.jl")
+include("bases/local/ndlcdlocal.jl")
+include("bases/local/bdm3dlocal.jl")
+include("bases/local/rtqlocal.jl")
+include("bases/local/gwplocal.jl")
+include("bases/local/gwpdivlocal.jl")
+
 
 include("bases/basis.jl")
 include("bases/local/perm_matrices.jl")
@@ -143,27 +165,24 @@ include("bases/lincomb.jl")
 include("bases/trace.jl")
 include("bases/restrict.jl")
 include("bases/divergence.jl")
-
-include("bases/local/laglocal.jl")
-include("bases/local/rtlocal.jl")
-include("bases/local/ndlocal.jl")
-include("bases/local/bdmlocal.jl")
-include("bases/local/ncrossbdmlocal.jl")
-include("bases/local/ndlcclocal.jl")
-include("bases/local/ndlcdlocal.jl")
-include("bases/local/bdm3dlocal.jl")
+include("bases/global/globaldofs.jl")
+include("bases/global/gwpglobal.jl")
+include("bases/global/gwpdivglobal.jl")
 
 include("bases/lagrange.jl")
 include("bases/rtspace.jl")
+include("bases/rt2space.jl")
 include("bases/rtxspace.jl")
 include("bases/bcspace.jl")
 include("bases/ndspace.jl")
+include("bases/nd2space.jl")
 include("bases/bdmdiv.jl")
 include("bases/ncrossbdmspace.jl")
 include("bases/ndlccspace.jl")
 include("bases/ndlcdspace.jl")
 include("bases/dual3d.jl")
 include("bases/bdm3dspace.jl")
+include("bases/rtqspace.jl")
 
 
 include("bases/subdbasis.jl")
@@ -175,22 +194,34 @@ include("bases/tensorbasis.jl")
 include("operator.jl")
 
 include("quadrature/quadstrats.jl")
+include("quadrature/doublenumqstrat.jl")
+include("quadrature/doublenumsauterqstrat.jl")
+include("quadrature/doublenumwiltonsauterqstrat.jl")
+include("quadrature/doublenumwiltonbogaertqstrat.jl")
+include("quadrature/selfsauterdnumotherwiseqstrat.jl")
+include("quadrature/nonconformingintegralopqstrat.jl")
+include("quadrature/commonfaceoverlappingedgeqstrat.jl")
+include("quadrature/strategies/cfcvsautercewiltonpdnumqstrat.jl")
+include("quadrature/strategies/testrefinestrialqstrat.jl")
+include("quadrature/strategies/trialrefinestestqstrat.jl")
 
 include("excitation.jl")
+include("gridfunction.jl")
 include("localop.jl")
 include("multiplicativeop.jl")
 include("identityop.jl")
 include("integralop.jl")
 include("dyadicop.jl")
 include("interpolation.jl")
-include("quaddata.jl")
 
-include("quadrature/quaddata.jl")
-include("quadrature/quadrule.jl")
-
-include("quadrature/double_quadrature.jl")
-include("quadrature/singularity_extraction.jl")
+include("quadrature/rules/momintegrals.jl")
+include("quadrature/doublenumints.jl")
+include("quadrature/singularityextractionints.jl")
 include("quadrature/sauterschwabints.jl")
+include("quadrature/nonconformingoverlapqrule.jl")
+include("quadrature/nonconformingtouchqrule.jl")
+include("quadrature/rules/testrefinestrialqrule.jl")
+include("quadrature/rules/trialrefinestestqrule.jl")
 
 include("postproc.jl")
 include("postproc/segcurrents.jl")
@@ -264,9 +295,9 @@ include("timedomain/convquadops.jl")
 
 
 
-const x̂ = point(1,0,0)
-const ŷ = point(0,1,0)
-const ẑ = point(0,0,1)
+const x̂ = point(1, 0, 0)
+const ŷ = point(0, 1, 0)
+const ẑ = point(0, 0, 1)
 export x̂, ŷ, ẑ
 
 const n = NormalVector()

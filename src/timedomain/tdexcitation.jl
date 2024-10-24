@@ -40,8 +40,13 @@ function quadrule(exc::TDFunctional, testrefs, timerefs::DiracBoundary, p, τ, r
 
 end
 
-
 function assemble(exc::TDFunctional, testST; quaddata=quaddata, quadrule=quadrule)
+    
+    stagedtimestep = isa(temporalbasis(testST), BEAST.StagedTimeStep)
+    if stagedtimestep
+        return staged_assemble(exc, testST; quaddata=quaddata, quadrule=quadrule)
+    end
+    
     testfns = spatialbasis(testST)
     timefns = temporalbasis(testST)
     Z = zeros(eltype(exc), numfunctions(testfns), numfunctions(timefns))
@@ -50,26 +55,27 @@ function assemble(exc::TDFunctional, testST; quaddata=quaddata, quadrule=quadrul
     return Z
 end
 
-function assemble(exc::TDFunctional, testST::StagedTimeStep; 
+function staged_assemble(exc::TDFunctional, testST::SpaceTimeBasis; 
     quaddata=quaddata, quadrule=quadrule)
 
-    stageCount = length(testST.c);
-    spatialBasis = testST.spatialBasis;
-    Nt = testST.Nt;
-    Δt = testST.Δt;
-    Z = zeros(eltype(exc), numfunctions(spatialBasis) * stageCount, Nt);
+    @warn "staged assemble of the right-hand side"
+    testfns = spatialbasis(testST)
+    timefns = temporalbasis(testST)
+    stageCount = numstages(timefns)
+    Nt = timefns.Nt
+    Δt = timefns.Δt
+    Z = zeros(eltype(exc), numfunctions(testfns) * stageCount, Nt)
     for i = 1:stageCount
-        store(v,m,k) = (Z[(m-1)*stageCount+i,k] += v);
-        tbsd = TimeBasisDeltaShifted(timebasisdelta(Δt, Nt), testST.c[i]);
-        assemble!(exc, spatialBasis ⊗ tbsd, store,
-            quaddata=quaddata, quadrule=quadrule);
+        store(v,m,k) = (Z[(m-1)*stageCount+i,k] += v)
+        tbsd = TimeBasisDeltaShifted(timebasisdelta(Δt, Nt), timefns.c[i])
+        assemble!(exc, testfns ⊗ tbsd, store,
+            quaddata=quaddata, quadrule=quadrule)
     end
-    return Z;
+    return Z
 end
 
 function assemble!(exc::TDFunctional, testST, store;
     quaddata=quaddata, quadrule=quadrule)
-
     testfns = spatialbasis(testST)
     timefns = temporalbasis(testST)
 
@@ -79,9 +85,11 @@ function assemble!(exc::TDFunctional, testST, store;
     testels, testad = assemblydata(testfns)
     timeels, timead = assemblydata(timefns)
 
+    
     qd = quaddata(exc, testrefs, timerefs, testels, timeels)
-
-    z = zeros(eltype(exc), numfunctions(testrefs), numfunctions(timerefs))
+    
+    num_testshapes = numfunctions(testrefs, domain(first(testels)))
+    z = zeros(eltype(exc), num_testshapes, numfunctions(timerefs))
     for p in eachindex(testels)
         τ = testels[p]
         for r in eachindex(timeels)
@@ -91,7 +99,7 @@ function assemble!(exc::TDFunctional, testST, store;
             qr = quadrule(exc, testrefs, timerefs, p, τ, r, ρ, qd)
             momintegrals!(z, exc, testrefs, timerefs, τ, ρ, qr)
 
-            for i in 1 : numfunctions(testrefs)
+            for i in 1 : num_testshapes
                 for d in 1 : numfunctions(timerefs)
 
                     v = z[i,d]
@@ -149,13 +157,15 @@ end
 
 function timeintegrals!(z, exc::TDFunctional, testrefs, timerefs, testpoint, timeelement, dx, qr, f)
 
+    num_tshapes = numfunctions(testrefs, domain(chart(testpoint)))
+
     for p in qr.quad_points
         t = p.point
         w = p.weight
         U = p.value
         dt = w #* jacobian(t) # * volume(timeelement)
 
-        for i in 1 : numfunctions(testrefs)
+        for i in 1 : num_tshapes
             for k in 1 : numfunctions(timerefs)
                 z[i,k] += dot(f[i][1]*U[k], exc(testpoint,t)) * dt * dx
             end
@@ -170,12 +180,14 @@ function timeintegrals!(z, exc::TDFunctional,
         testpoint, timeelement,
         dx, qr, testvals)
 
+        num_tshapes = numfunctions(spacerefs, domain(chart(testpoint)))
+
         # since timeelement uses barycentric coordinates,
         # the first/left vertex has coords u = 1.0!
         testtime = neighborhood(timeelement, point(0.0))
         @assert cartesian(testtime)[1] ≈ timeelement.vertices[2][1]
 
-        for i in 1 : numfunctions(spacerefs)
+        for i in 1 : num_tshapes
             z[i,1] += dot(testvals[i][1], exc(testpoint, testtime)) * dx
         end
 end

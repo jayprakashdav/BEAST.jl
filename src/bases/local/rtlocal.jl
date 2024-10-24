@@ -1,4 +1,4 @@
-struct RTRefSpace{T} <: RefSpace{T,3} end
+struct RTRefSpace{T} <: DivRefSpace{T} end
 
 # valuetype(ref::RTRefSpace{T}, charttype) where {T} = SVector{3,Tuple{SVector{universedimension(charttype),T},T}}
 function valuetype(ref::RTRefSpace{T}, charttype::Type) where {T}
@@ -26,7 +26,9 @@ function (ϕ::RTRefSpace)(mp)
     ))
 end
 
-divergence(ref::RTRefSpace, sh, el) = Shape(sh.cellid, 1, sh.coeff/volume(el))
+numfunctions(x::RTRefSpace, dom::CompScienceMeshes.ReferenceSimplex{2}) = 3
+
+divergence(ref::RTRefSpace, sh, el) = [Shape(sh.cellid, 1, sh.coeff/volume(el))]
 
 """
     ntrace(refspace, element, localindex, face)
@@ -42,42 +44,6 @@ function ntrace(x::RTRefSpace, el, q, fc)
     t = zeros(scalartype(x),1,3)
     t[q] = 1 / volume(fc)
     return t
-end
-
-function restrict(ϕ::RTRefSpace{T}, dom1, dom2) where T
-
-    K = numfunctions(ϕ)
-    D = dimension(dom1)
-
-    @assert K == 3
-    @assert D == 2
-    @assert D == dimension(dom2)
-
-    Q = zeros(T,K,K)
-    for i in 1:K
-
-        # find the center of edge i of dom2
-        a = dom2.vertices[mod1(i+1,D+1)]
-        b = dom2.vertices[mod1(i+2,D+1)]
-        c = (a + b) / 2
-
-        # find the outer binormal there
-        t = b - a
-        l = norm(t)
-        n = dom2.normals[1]
-        m = cross(t, n) / l
-
-        u = carttobary(dom1, c)
-        x = neighborhood(dom1, u)
-
-        y = ϕ(x)
-
-        for j in 1:K
-            Q[j,i] = dot(y[j][1], m) * l
-        end
-    end
-
-    return Q
 end
 
 
@@ -99,6 +65,12 @@ const _dof_perms_rt = [
 ]
 
 function dof_permutation(::RTRefSpace, vert_permutation)
+    i = something(findfirst(==(tuple(vert_permutation...)), _vert_perms_rt),0)
+    @assert i != 0
+    return _dof_perms_rt[i]
+end
+
+function dof_perm_matrix(::RTRefSpace, vert_permutation)
     i = findfirst(==(tuple(vert_permutation...)), _vert_perms_rt)
     @assert i != nothing
     return _dof_perms_rt[i]

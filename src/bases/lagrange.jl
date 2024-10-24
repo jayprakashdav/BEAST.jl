@@ -11,6 +11,7 @@ function lagdimension end
 # M: mesh type
 # T: field type
 # NF: number of local shape functions
+# P: point type
 mutable struct LagrangeBasis{D,C,M,T,NF,P} <: Space{T}
   geo::M
   fns::Vector{Vector{Shape{T}}}
@@ -48,6 +49,130 @@ function lagrangecxd0(mesh)
   LagrangeBasis{0,-1,NF}(geometry, fns, pos)
 end
 
+"""
+    unitfunctioncxd0(mesh)
+
+Constructs a constant function with value 1 on `mesh`.
+"""
+function unitfunctioncxd0(mesh)
+
+    T = coordtype(mesh)
+    geometry = mesh
+
+    # create the local shapes
+    fns = Vector{Vector{Shape{T}}}(undef, 1)
+    pos = Vector{vertextype(mesh)}(undef, 1)
+    fns[1] = [Shape(i, 1, T(1.0)) for (i, cell) in enumerate(mesh)]
+
+    # Arguably, the position is fairly meaningless
+    # in case of a global function. Might be replaced by something
+    # more useful.
+    # For now, we fill it with the average position of the shape functions
+    p = vertextype(mesh)(0.0, 0.0, 0.0)
+    for cell in mesh
+        p += cartesian(center(chart(mesh, cell)))
+    end
+    pos[1] = p ./ numcells(mesh)
+
+    NF = 1
+    LagrangeBasis{0,-1,NF}(geometry, fns, pos)
+end
+
+"""
+    unitfunctionc0d1(mesh)
+
+Constructs a constant function with value 1 on `mesh` consisting of linear shapes. For dirichlet=true goes to zero on the boundary.
+"""
+function unitfunctionc0d1(mesh; dirichlet=true)
+    if dirichlet == false
+        return unitfunctionc0d1(mesh, skeleton(mesh,0))
+    else
+        return unitfunctionc0d1_dirichlet(mesh)
+    end
+end
+
+function unitfunctionc0d1_dirichlet(mesh)
+
+    T = coordtype(mesh)
+    
+    verts = skeleton(mesh, 0)
+    detached = trues(numvertices(mesh))
+    for v in cells(verts)
+        detached[v] = false
+    end
+
+    bnd = boundary(mesh)
+    bndverts = skeleton(bnd, 0)
+    notonbnd = trues(numvertices(mesh))
+    for v in cells(bndverts)
+        notonbnd[v] = false
+    end
+
+    vertexlist = findall(notonbnd .& .!detached)
+
+    cellids, ncells = vertextocellmap(mesh)
+
+    Cells = cells(mesh)
+    Verts = vertices(mesh)
+
+    # create the local shapes
+    fns = Vector{Vector{Shape{T}}}(undef, 1)
+    pos = Vector{vertextype(mesh)}(undef, 1)
+
+    numshapes = sum(ncells[vertexlist])
+    shapes = Vector{Shape{T}}(undef,numshapes)
+    n = 0
+    for v in vertexlist
+        nshapes = ncells[v]
+        nshapes == 0 && continue
+
+        for s in 1: nshapes
+            c = cellids[v,s]
+
+            cell = Cells[c]
+
+            localid = something(findfirst(isequal(v), cell),0)
+            @assert localid != 0
+
+            shapes[s+n] = Shape(c, localid, T(1.0))
+
+        end
+        n += nshapes
+    end
+    fns[1] = shapes
+    p = sum(mesh.vertices[vertexlist])/length(vertexlist)
+    pos[1] = p
+
+    NF = 3
+    LagrangeBasis{1,0,NF}(mesh, fns, pos)
+end
+
+function unitfunctionc0d1(mesh, nodes::CompScienceMeshes.AbstractMesh{U,1} where {U})
+    Conn = connectivity(nodes, mesh, abs)
+    rows = rowvals(Conn)
+    vals = nonzeros(Conn)
+
+    T = coordtype(mesh)
+    P = vertextype(mesh)
+    S = Shape{T}
+
+    fns = Vector{Vector{Shape{T}}}(undef, 1)
+    pos = Vector{vertextype(mesh)}(undef, 1)
+    fn = Vector{S}()
+    for (i,node) in enumerate(nodes)
+        for k in nzrange(Conn,i)
+            cellid = rows[k]
+            refid  = vals[k]
+            push!(fn, Shape(cellid, refid, T(1.0)))
+        end
+    end
+    fns[1] = fn
+    p = sum(nodes.vertices)/length(nodes.vertices)
+    pos[1] = p
+
+    NF = dimension(mesh) + 1
+    LagrangeBasis{1,0,NF}(mesh, fns, pos)
+end
 
 """
     lagrangec0d1(mesh[, bnd])
@@ -107,15 +232,24 @@ end
 """
     duallagrangecxd0(mesh, jct) -> basis
 
-Build dual Lagrange piecewise constant elements. Boundary nodes are only considered if they are in the interior of `jct`.
+Build dual Lagrange piecewise constant elements. Boundary nodes are only considered if
+they are in the interior of `jct`.
+
+The default dual function (`interpolatory=false`) is similar to the one depicted
+in Figure 3 of  Buffa et al (doi: 10.1090/S0025-5718-07-01965-5), with the
+difference that each individual shape function is normalized with respect to 
+the area so that overall the integral over the dual function is one.
+
+When `interpolatory=true` is used, the function value is one on the support, and thus,
+it gives rise to a partition of unity.
 """
-function duallagrangecxd0(mesh, jct=CompScienceMeshes.mesh(coordtype(mesh), dimension(mesh)-1))
+function duallagrangecxd0(mesh, jct=CompScienceMeshes.mesh(coordtype(mesh), dimension(mesh)-1); interpolatory=false)
     vertexlist = interior_and_junction_vertices(mesh, jct)
-    duallagrangecxd0(mesh, vertexlist)
+    duallagrangecxd0(mesh, vertexlist; interpolatory=interpolatory)
 end
 
 
-function duallagrangecxd0(mesh, vertexlist::Vector{Int})
+function duallagrangecxd0(mesh, vertexlist::Vector{Int}; interpolatory=false)
 
     T = coordtype(mesh)
 
@@ -128,7 +262,7 @@ function duallagrangecxd0(mesh, vertexlist::Vector{Int})
     for (k,v) in enumerate(vertexlist)
         n = vton[v]
         F = vtoc[v,1:n]
-        fns[k] = singleduallagd0(fine, F, v)
+        fns[k] = singleduallagd0(fine, F, v, interpolatory=interpolatory)
         push!(pos, verts[v])
     end
 
@@ -137,26 +271,35 @@ function duallagrangecxd0(mesh, vertexlist::Vector{Int})
 end
 
 
-function duallagrangecxd0(mesh, vertices::CompScienceMeshes.AbstractMesh{U,1}) where {U}
+function duallagrangecxd0(mesh, vertices::CompScienceMeshes.AbstractMesh{U,1}; interpolatory=false) where {U}
     # vertexlist = Int[v[1] for v in vertices]
     vertexlist =Int[CompScienceMeshes.indices(vertices, v)[1] for v in vertices]
-    return duallagrangecxd0(mesh, vertexlist)
+    return duallagrangecxd0(mesh, vertexlist; interpolatory=interpolatory)
 end
 
 
 """
-    singleduallagd0(fine, F, v)
+    singleduallagd0(fine, F, v; interpolatory=false)
 
-Build a single dual constant Lagrange element a mesh `fine`. `F` contains the indices to cells in the support and v is the index in the vertex list of the defining vertex.
+Build a single dual constant Lagrange element a mesh `fine`. `F` contains the indices
+to cells in the support and v is the index in the vertex list of the defining vertex.
+
+The default dual function (`interpolatory=false`) is similar to the one depicted
+in Figure 3 of  Buffa et al (doi: 10.1090/S0025-5718-07-01965-5), with the
+difference that each individual shape function is normalized with respect to
+the area so that overall the integral over the dual function is one.
+
+When `interpolatory=true` is used, the function value is one on the support, and thus,
+it gives rise to a partition of unity.
 """
-function singleduallagd0(fine, F, v)
+function singleduallagd0(fine, F, v; interpolatory=false)
 
     T = coordtype(fine)
     fn = Shape{T}[]
     for cellid in F
         # cell = cells(fine)[cellid]
         ptch = chart(fine, cellid)
-        coeff = 1 / volume(ptch) / length(F)
+        coeff = interpolatory ? T(1.0) : 1 / volume(ptch) / length(F)
         refid = 1
         push!(fn, Shape(cellid, refid, coeff))
     end
@@ -697,4 +840,209 @@ function dual0forms_body(mesh::CompScienceMeshes.AbstractMesh{<:Any,3}, refd, bn
     end
 
     LagrangeBasis{1,0,3}(refd, bfs, pos)
+end
+
+
+
+function lagrangecx(mesh::CompScienceMeshes.AbstractMesh{<:Any,3}; order)
+
+    T = coordtype(mesh)
+    NF = binomial(2+order, 2)
+    P = vertextype(mesh)
+    S = Shape{T}
+
+    fns = Vector{Vector{S}}(undef, length(mesh) * NF)
+    pos = Vector{P}(undef, length(mesh) * NF)
+
+    idx = 1
+    u = one(T)
+    for (c,cell) in enumerate(mesh)
+        ch = chart(mesh,cell)
+        for r in 1:NF
+            fns[idx] = S[S(c,r,u)]
+            pos[idx] = cartesian(center(ch))
+            idx += 1
+        end
+    end
+
+    return LagrangeBasis{order,-1,NF}(mesh, fns, pos)
+end
+
+
+
+"""
+    localindices(dof, chart, i)
+
+Returns a vector of indices into the vector of local shape functions that correspond to
+global degrees of freedom supported on sub-entity `i`, where the type of entity (nodes,
+edge, face) is encoded in the type of 'dof'.
+"""
+function localindices(dof::_LagrangeGlobalNodesDoFs, chart::CompScienceMeshes.Simplex,
+    localspace, i)
+
+    d = dof.order
+    [div((d+1)*(d+2),2), d+1, 1][[i]]
+end
+
+function localindices(dof::_LagrangeGlobalEdgeDoFs, chart::CompScienceMeshes.Simplex,
+    localspace, i)
+
+    d = dof.order
+    lids, lid = Int[], 0
+    if i == 1
+        for i in 0:d for j in 0:d
+            k = d - i - j
+            k < 0 && continue
+            lid += 1
+            i != 0 && continue
+            j in (0,d) && continue
+            push!(lids, lid)
+        end end
+    elseif i == 2
+        for i in 0:d for j in 0:d
+            k = d - i - j
+            k < 0 && continue
+            lid += 1
+            i in (0,d) && continue
+            j != 0 && continue
+            push!(lids, lid)
+        end end
+    elseif i ==3
+        for i in 0:d for j in 0:d
+            k = d - i - j
+            k < 0 && continue
+            lid += 1
+            j in (0,d) && continue
+            k != 0 && continue
+            push!(lids, lid)
+        end end
+    else
+        error("wrong local edge index")
+    end
+    return lids
+end
+
+function localindices(dof::_LagrangeGlobalFaceDoFs, chart::CompScienceMeshes.Simplex,
+    localspace, i)
+
+    d = dof.order
+    lids, lid = Int[], 0
+    for i in 0:d, j in 0:d
+        k = d - i - j
+        k < 0 && continue
+        lid += 1
+        (i == 0 || j == 0 || k == 0) && continue
+        # @show (i,j,k)
+        push!(lids, lid)
+    end
+    return lids
+end
+
+function localindices(dof::_LagrangeGlobalNodesDoFs, chart::CompScienceMeshes.Simplex,
+    localspace::LagrangeRefSpace{<:Real,2}, i)
+    return [i]
+end
+
+function localindices(dof::_LagrangeGlobalEdgeDoFs, chart::CompScienceMeshes.Simplex,
+    localspace::LagrangeRefSpace{<:Real,2}, i)
+    return [3+i]
+end
+
+function localindices(dof::_LagrangeGlobalFaceDoFs, chart::CompScienceMeshes.Simplex,
+    localspace::LagrangeRefSpace{<:Real,2}, i)
+    return []
+end
+
+
+function lagrangec0(mesh::CompScienceMeshes.AbstractMesh{<:Any,3}; order)
+
+    T = coordtype(mesh)
+    atol = sqrt(eps(T))
+
+    P = vertextype(mesh)
+    S = Shape{T}
+    F = Vector{S}
+
+    verts = skeleton(mesh, 0)
+    edges = skeleton(mesh, 1)
+
+    C02 = connectivity(mesh, verts, abs); R02 = rowvals(C02); V02 = nonzeros(C02)
+    C12 = connectivity(mesh, edges, abs); R12 = rowvals(C12); V12 = nonzeros(C12)
+
+    ne = order-1
+    nf = div((order-2)*(order-1), 2)
+
+    nV = length(verts)
+    nE = length(edges) * ne
+    nF = length(mesh) * nf
+    N = nV + nE + nF
+
+    localspace = LagrangeRefSpace{T,order,3,binomial(2+order,2)}()
+    dom = domain(chart(mesh, first(mesh)))
+    localdim = numfunctions(localspace, dom)
+    
+    d = order
+    fns = [S[] for n in 1:(nV+nE+nF)]
+    pos = fill(point(0,0,0), nV+nE+nF)
+    for cell in mesh
+        cell_ch = chart(mesh, cell)
+        V = R02[nzrange(C02,cell)]
+        I = V02[nzrange(C02,cell)]
+        for (i,v) in zip(I, V)
+            vertex_ch = chart(verts, v)
+            gids = [v]
+            lids = localindices(_LagrangeGlobalNodesDoFs(d), cell_ch, localspace, i)
+            v = globaldofs(vertex_ch, cell_ch, localspace, _LagrangeGlobalNodesDoFs(d))
+            α = v[lids, :]
+            β = inv(α')
+            for i in axes(β,1)
+                for j in axes(β,2)
+                    isapprox(β[i,j], 0; atol) && continue
+                    push!(fns[gids[i]], S(cell, lids[j], β[i,j]))
+                end
+            end
+        end
+
+        E = R12[nzrange(C12,cell)]
+        I = V12[nzrange(C12,cell)]
+        for (i,e) in zip(I, E)
+            edge_ch = chart(edges, e)
+            gids = nV + (e-1)*ne + 1: nV + e*ne
+            lids = localindices(_LagrangeGlobalEdgeDoFs(d), cell_ch, localspace, i)
+            @assert length(lids) == length(gids)
+            v = globaldofs(edge_ch, cell_ch, localspace, _LagrangeGlobalEdgeDoFs(d))
+            α = v[lids, :]
+            β = inv(α')
+            for i in axes(β,1)
+                for j in axes(β,2)
+                    isapprox(β[i,j], 0; atol) && continue
+                    push!(fns[gids[i]], S(cell, lids[j], β[i,j]))
+                end
+            end
+        end
+
+        order < 3 && continue
+        F = [cell]
+        for (q,f) in enumerate(F)
+            face_ch = chart(mesh, f)
+            gids = nV + nE + (f-1)*nf + 1 : nV + nE + f*nf
+            lids = localindices(_LagrangeGlobalFaceDoFs(d), cell_ch, localspace, 1)
+            v = globaldofs(face_ch, cell_ch, localspace, _LagrangeGlobalFaceDoFs(d))
+            α = v[lids, :]
+            # @show α
+            β = inv(α')
+            for i in axes(β,1)
+                for j in axes(β,2)
+                    isapprox(β[i,j], 0; atol) && continue
+                    push!(fns[gids[i]], S(cell, lids[j], β[i,j]))
+                end
+            end
+        end 
+    end
+
+    for v in verts pos[v] = cartesian(center(chart(verts, v))) end
+    for e in edges pos[nV + (e-1)*ne + 1: nV + e*ne] .= Ref(cartesian(center(chart(edges, e)))) end
+    for f in mesh pos[nV + nE + (f-1)*nf + 1: nV + nE + f*nf] .= Ref(cartesian(center(chart(mesh, f)))) end
+
+    return LagrangeBasis{order,0,localdim}(mesh, fns, pos)
 end
