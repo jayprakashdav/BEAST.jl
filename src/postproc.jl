@@ -56,7 +56,8 @@ function facecurrents(coeffs, basis::SpaceTimeBasis)
 
 	refs = refspace(space_basis)
 	trefs = refspace(time_basis)
-	numrefs = numfunctions(refs)
+	dom = domain(chart(basis.geo, first(basis.geo)))
+	numrefs = numfunctions(refs, dom)
 	tnumrefs = numfunctions(trefs)
 
 	cells, ad = assemblydata(space_basis)
@@ -223,7 +224,8 @@ function potential!(store, op, points, basis::SpaceTimeBasis)
 	refs = refspace(space_basis)
 	trefs = refspace(time_basis)
 
-	numrefs = numfunctions(refs)
+	dom = domain(chart(basis.geo, first(basis.geo)))
+	numrefs = numfunctions(refs, dom)
 	tnumrefs = numfunctions(trefs)
 
 	els, ad = assemblydata(space_basis)

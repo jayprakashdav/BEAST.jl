@@ -32,6 +32,7 @@ function grideval(points, coeffs, basis; type=nothing)
     P = similar_type(V, T)
 
     type != nothing && (P = type)
+    dom = domain(chart(basis.geo, first(basis.geo)))
 
     values = zeros(P, size(points))
 
@@ -43,7 +44,7 @@ function grideval(points, coeffs, basis; type=nothing)
             chart = charts[i]
             u = carttobary(chart, point)
             vals = refs(neighborhood(chart,u))
-            for r in 1 : numfunctions(refs)
+            for r in 1 : numfunctions(refs,dom)
                 for (m,w) in ad[i, r]
                     values[j] += w * coeffs[m] * vals[r][1]
                 end
