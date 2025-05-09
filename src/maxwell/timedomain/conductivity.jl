@@ -1,18 +1,20 @@
-abstract type ConductivityTD_Functionaltype <: BEAST.Functional end
+abstract type ConductivityTD_Functionaltype{T} <: BEAST.Functional{T} end
 
 abstract type ConductivityTD_Operatortype <: BEAST.LocalOperator end
 
-mutable struct ConductivityTDFunc <: ConductivityTD_Functionaltype
-    chr::BEAST.Polynomial
-    dchr::BEAST.Polynomial
-    numdiffs::Int
-    efield::Array{SVector{3, Float64},2}
-    jflux::Array{SVector{3, Float64},2}
+mutable struct ConductivityTDFunc{L,M,N,P,T} <: ConductivityTD_Functionaltype{T}
+    chr::L
+    dchr::M
+    numdiffs::N
+    efield::P
+    jflux::P
 end
 
 mutable struct ConductivityTDOp <: ConductivityTD_Operatortype
     op::ConductivityTDFunc
 end
+
+ConductivityTDFunc(chr::L, dchr::M, numdiffs::N, efield::P, jflux::P) where {L,M, N, P} = ConductivityTDFunc{L,M,N,P,eltype(efield[1])}(chr,dchr,numdiffs,efield,jflux)
 
 scalartype(p::ConductivityTDFunc) = eltype(p.efield[1])
 scalartype(p::ConductivityTDOp) = eltype(p.op.efield[1])
@@ -185,9 +187,9 @@ function assemble!(field::ConductivityTDFunc, tfs::BEAST.Space, store;
 
 end
 
-function celltestvalues(tshs::BEAST.RefSpace{T, NF}, t, tcell, field::ConductivityTDFunc, qr) where {T, NF}
+function celltestvalues(tshs::BEAST.RefSpace{T}, t, tcell, field::ConductivityTDFunc, qr) where {T}
 
-    num_tshs = numfunctions(tshs)
+    num_tshs = numfunctions(tshs, domain(tcell))
     interactions = zeros(Complex{T}, num_tshs)
 
     num_oqp = length(qr)
