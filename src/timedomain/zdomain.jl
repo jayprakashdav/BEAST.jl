@@ -12,6 +12,13 @@ function laplace_to_z(rho, n, N, dt, A, b)
 	return s
 end
 
+function laplace_to_z(rho, n, N, dt, method::FiniteDiffMethod)
+	iz = (1/rho)*exp(-2*im*pi*n/N)
+	@assert dt ≈ method.dt
+	s = method.p(iz)
+	return s
+end
+
 """
     inverse_z_transform(k, rho, N, X)
 
@@ -32,6 +39,7 @@ X is an array of the z-transform
 evaluated in the points z=rho*exp(2*im*pi*n/N) for n in 0:(Nmax-1).
 """
 function real_inverse_z_transform(k, rho, N, X::AbstractArray{T,1}) where T
+	@info k
 	Nmax = (N+1)>>1
 	realTerms = (N%2==0) ? real(X[1]) + (-1)^k * real(X[Nmax+1]) : real(X[1])
 	return ((rho^k) / N) * (realTerms + 2*sum(n -> real(X[n+1] * exp(2*im*pi*k*n/N)), 1:(Nmax-1)))
