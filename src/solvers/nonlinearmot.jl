@@ -170,7 +170,7 @@ function quadpoint_field(biop::ConductivityTD_Functionaltype, coeffs, k, tfs, bf
     for (p,bcell) in enumerate(bels)   
         qr = BEAST.quadrule(biop, trefs, brefs, bcell, qd, quadstrat)
         for (qi,qdpt) in enumerate(qr)
-            mp = carttobary(bcell, qdpt[2])
+            mp = carttobary(bcell, qdpt[2].cart)
             vals = brefs(neighborhood(bcell, mp))
             tvals = btrefs(neighborhood(btcell,1))
             for si in 1:numbrefs
@@ -262,7 +262,7 @@ function marchonintimenl(eq1, eq2,  Z, inc, Ġ, G_j, G_nl, Nt)
     csxe = zeros(T,Ne,Nt)
     σ = eq2.equation.rhs.terms[1].functional
     σop = BEAST.ConductivityTDOp(σ)
-    σopch = BEAST.ConductivityTDOpch(σ)
+    #σopch = BEAST.ConductivityTDOpch(σ)
     bσ = zeros(T, N)
     iZ = BEAST.GMRESSolver(Z0, restart=0, reltol=1e-6)
     invZ = inv(Z0)
