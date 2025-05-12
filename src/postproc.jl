@@ -50,13 +50,15 @@ function facecurrents(coeffs, basis::SpaceTimeBasis)
 
 	space_basis = basis.space
 	time_basis = basis.time
+	mesh = geometry(basis.space)
+	dom = domain(chart(mesh, first(mesh)))
 
 	Nt = numfunctions(time_basis)
 	Δt = timestep(time_basis)
 
 	refs = refspace(space_basis)
 	trefs = refspace(time_basis)
-	numrefs = numfunctions(refs)
+	numrefs = numfunctions(refs, dom)
 	tnumrefs = numfunctions(trefs)
 
 	cells, ad = assemblydata(space_basis)

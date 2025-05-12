@@ -82,13 +82,15 @@ function assemble_local_matched!(biop::ConductivityTDOp, tfs::BEAST.Space, bfs::
 
     trefs = BEAST.refspace(tfs)
     brefs = BEAST.refspace(bfs)
+    tgeo = geometry(tfs)
+    tdom = domain(chart(tgeo, first(tgeo)))
 
     qd = BEAST.quaddata(biop, trefs, brefs, tels, bels, quadstrat)
 
     verbose = length(tels) > 10_000
     verbose && print("dots out of 20: ")
     todo, done, pctg = length(tels), 0, 0
-    locmat = zeros(BEAST.scalartype(biop, trefs, brefs), BEAST.numfunctions(trefs), numfunctions(brefs))
+    locmat = zeros(BEAST.scalartype(biop, trefs, brefs), BEAST.numfunctions(trefs, tdom), numfunctions(brefs, tdom))
     for (p,cell) in enumerate(tels)
         P = ta2g[p]
         q = bg2a[P]
@@ -169,6 +171,9 @@ function assemble!(field::ConductivityTDFunc, tfs::BEAST.Space, store;
     tels, tad = BEAST.assemblydata(tfs)
 
     trefs = BEAST.refspace(tfs)
+    tgeo = geometry(tfs)
+    tdom = domain(chart(tgeo, first(tgeo)))
+
     qd = BEAST.quaddata(field, trefs, tels, quadstrat)
 
     for (t, tcell) in enumerate(tels)
@@ -177,7 +182,7 @@ function assemble!(field::ConductivityTDFunc, tfs::BEAST.Space, store;
         qr = BEAST.quadrule(field, trefs, t, tcell, qd, quadstrat)
         blocal = BEAST.celltestvalues(trefs, t, tcell, field, qr)
 
-        for i in 1 : BEAST.numfunctions(trefs)
+        for i in 1 : BEAST.numfunctions(trefs, tdom)
             for (m,a) in tad[t,i]
                 store(a*blocal[i], m)
             end

@@ -147,8 +147,11 @@ function quadpoint_field(biop::ConductivityTD_Functionaltype, coeffs, k, tfs, bf
     trefs = BEAST.refspace(tfs.space)
     brefs = BEAST.refspace(bfs.space)
     btrefs = BEAST.refspace(bfs.time)
+    tgeo = geometry(tfs.space)
 
-    numbrefs = BEAST.numfunctions(brefs)
+    tdom = domain(chart(tgeo, first(tgeo)))
+
+    numbrefs = BEAST.numfunctions(brefs, tdom)
     numbtrefs = BEAST.numfunctions(btrefs)
 
     tels, tad, ta2g = BEAST.assemblydata(tfs.space)
@@ -232,10 +235,12 @@ end
 end
  =#
 function marchonintimenl(eq1, eq2,  Z, inc, Ġ, G_j, G_nl, Nt)
+    @show "motl begun"
     Z0 = zeros(eltype(Z), size(Z)[1:2])
     BEAST.ConvolutionOperators.timeslice!(Z0,Z,1)
     Ġ0 = zeros(eltype(Ġ), size(Ġ)[1:2])
     BEAST.ConvolutionOperators.timeslice!(Ġ0,Ġ,1) 
+    @show "motl"
     G_j0 = G_j.data[1,:,:]
     G_nl0 = G_nl.data[1,:,:]
     T = eltype(Z0)
@@ -269,6 +274,7 @@ function marchonintimenl(eq1, eq2,  Z, inc, Ġ, G_j, G_nl, Nt)
     C1 = G_j0*invZ
     C2 = C1*Ġ0
     #= try =#
+    @show Nt
     for i in 1:Nt
         println(i)
         R = inc[:,i]
@@ -361,10 +367,10 @@ function td_solve(eq1::BEAST.DiscreteEquation, eq2::BEAST.DiscreteEquation, cq=f
     Ġ = BEAST.assemble(idST, f1, h1)
     G_j = BEAST.assemble(idST, f2, g)
     Nt = BEAST.numfunctions(g.time)
-    if typeof(eq2.equation.rhs.terms[1].functional)==ConductivityTDFunc
-        G_nl = BEAST.assemble(idST, f2, h)
-        return marchonintimenl(eq1, eq2, Z, b, Ġ, G_j, G_nl, Nt)
-    end
+    #if typeof(eq2.equation.rhs.terms[1].functional)==ConductivityTDFunc
+    G_nl = BEAST.assemble(idST, f2, h)
+    return marchonintimenl(eq1, eq2, Z, b, Ġ, G_j, G_nl, Nt)
+    #end
 end
 
 function td_solve_cq(eq1::BEAST.DiscreteEquation, eq2::BEAST.DiscreteEquation)
