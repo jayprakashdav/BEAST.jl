@@ -235,12 +235,10 @@ end
 end
  =#
 function marchonintimenl(eq1, eq2,  Z, inc, Ġ, G_j, G_nl, Nt)
-    @show "motl begun"
     Z0 = zeros(eltype(Z), size(Z)[1:2])
     BEAST.ConvolutionOperators.timeslice!(Z0,Z,1)
     Ġ0 = zeros(eltype(Ġ), size(Ġ)[1:2])
     BEAST.ConvolutionOperators.timeslice!(Ġ0,Ġ,1) 
-    @show "motl"
     G_j0 = G_j.data[1,:,:]
     G_nl0 = G_nl.data[1,:,:]
     T = eltype(Z0)
@@ -252,7 +250,7 @@ function marchonintimenl(eq1, eq2,  Z, inc, Ġ, G_j, G_nl, Nt)
     V0[N+1:N+Ne, 1:N] = G_j0
     sol = zeros(2*N)
     xj_all = zeros(N)
-    xe_all = zeros(N)
+    xe_all = zeros(Ne)
     @assert M == size(inc,1)
     xj = zeros(T,N,Nt)
 	xe = zeros(T,Ne,Nt)
@@ -309,11 +307,15 @@ function marchonintimenl(eq1, eq2,  Z, inc, Ġ, G_j, G_nl, Nt)
             u, ch = solve(iw, rhs2)
             xe[:,i] .= u
             xj[:,i] .= invZ*(rhs1+Ġ0*xe[:,i]) =#
-            #xe_all = hcat(xe_all, xe[:,i])
-            #xj_all = hcat(xj_all, xj[:,i])
+            xe_all = hcat(xe_all, xe[:,i])
+            xj_all = hcat(xj_all, xj[:,i])
             println("norm xe ", norm(xe[:,i]-xeprev)/M)
-            if norm(xe[:,i]-xeprev)/M < 1e-4
+            if norm(xe[:,i]-xeprev)/M < 1e-8
                 break
+            end
+            #Added to debug non convergence due to higher order curl conf bases
+            if norm(xe[:,i]-xeprev)/M > 1e3
+                return xj, xe, xj_all, xe_all
             end
             #= println("L_inf norm of diff of xe ", maximum(abs.((xe[:,i]-xeprev))))
             if maximum(abs.((xe[:,i]-xeprev)))/M < 1e-10
