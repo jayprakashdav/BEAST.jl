@@ -18,7 +18,8 @@ function timeintegrals!(z, exc::TDFunctional,
 
         for i in 1 : num_tshapes
             for k in 1 : numfunctions(timerefs)
-                z[i,k] += dot(f[i][1]*U[k], exc(testpoint,t)) * dt * dx
+                #z[i,k] += dot(f[i][1]*U[k], exc(testpoint,t)) * dt * dx
+                z[i,k] += transpose(f[i][1]*U[k])* exc(testpoint,t) * dt * dx
             end
         end
     end

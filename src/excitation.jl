@@ -91,7 +91,7 @@ end
 function celltestvalues(tshs::RefSpace{T}, tcell, field, qr) where {T}
 
     num_tshs = numfunctions(tshs, domain(tcell))
-    interactions = zeros(Complex{T}, num_tshs)
+    interactions = zeros(Complex{real(T)}, num_tshs)
 
     num_oqp = length(qr)
 
@@ -118,7 +118,7 @@ function celltestvalues(tshs::subReferenceSpace{T,D}, tcell, field, qr) where {T
 
     num_oqp = length(qr)
     num_tshs = length(qr[1].value[1])
-    interactions = (Complex{T}, num_tshs)
+    interactions = (Complex{real(T)}, num_tshs)
     for p in 1 : num_oqp
         mp = qr[p].point
 
@@ -127,7 +127,7 @@ function celltestvalues(tshs::subReferenceSpace{T,D}, tcell, field, qr) where {T
         fval = field(mp)
         tvals = qr[p].value
 
-        interactions = zeros(Complex{T}, num_tshs)
+        interactions = zeros(Complex{real(T)}, num_tshs)
         for m in 1 : num_tshs
             tval = tvals[1][m]
 
@@ -196,6 +196,7 @@ LinearAlgebra.dot(::NormalVector, f) = NDotTrace(f)
 (ϕ::NDotTrace)(p) = dot(normal(p), ϕ.field(cartesian(p)))
 
 integrand(::Any, testvals, fieldval) = dot(testvals[1], fieldval)
+#integrand(::Any, testvals, fieldval) = transpose(testvals[1])*fieldval
 # integrand(::TangTraceMW, gx, ϕx) = gx[1] ⋅ ϕx
 # integrand(::CrossTraceMW, test_vals, field_val) = test_vals[1] ⋅ field_val
 # integrand(::NDotTrace, g, ϕ) = dot(g.value, ϕ)
