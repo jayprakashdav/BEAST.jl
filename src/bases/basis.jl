@@ -405,7 +405,7 @@ function functionvals(s::BEAST.Space, index::Int, n=3)
 end
 
 
-
+#= 
 function eval(s::BEAST.Space, i::Int, cellid, u)
 
     ch = chart(cellid, s.geo)
@@ -423,4 +423,4 @@ function eval(s::BEAST.Space, i::Int, cellid, u)
     end
 
     return r
-end
+end =#
