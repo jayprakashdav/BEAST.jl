@@ -325,6 +325,11 @@ include("helmholtz3d/timedomain/tdhh3dpp.jl")
 include("maxwell/timedomain/mwtdops.jl")
 include("maxwell/timedomain/mwtdexc.jl")
 include("maxwell/timedomain/tdfarfield.jl")
+include("maxwell/timedomain/conductivity.jl")
+include("maxwell/timedomain/conductivity2.jl")
+include("maxwell/timedomain/conductivity2_fixed_point.jl")
+include("maxwell/timedomain/conductivity_fixed_point.jl")
+# include("maxwell/impedance_ops.jl")   # IBC scripts only; not wired in on this branch
 
 
 include("solvers/solver.jl")
