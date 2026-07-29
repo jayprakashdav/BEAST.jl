@@ -96,7 +96,9 @@ function assemble(cqop :: FiniteDiffConvolutionQuadrature,
 	elseif threading.parameters[1]==:multi
 		@info "multi threaded inv z transform"
 		T = Threads.nthreads()
-		Ksplits = [round(Int, s) for s in range(0, stop=Qmax, length=T+1)]
+		# split over the full 0:kmax-1 range (kmax = Q); splitting up to Qmax
+		# only covers half the slices and leaves the time slices beyond Qmax zero
+		Ksplits = [round(Int, s) for s in range(0, stop=kmax, length=T+1)]
 		Threads.@threads for idx in 1:T
 			for q = Ksplits[idx]:Ksplits[idx+1]-1
 				Z[:,:,q+1] = real_inverse_z_transform(q, rho, Q, Zz)
