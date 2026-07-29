@@ -338,6 +338,7 @@ include("solvers/itsolver.jl")
 include("solvers/gmres.jl")
 include("solvers/lu.jl")
 include("solvers/cholesky.jl")
+include("solvers/nonlinearmot.jl")
 
 include("utils/plotlyglue.jl")
 
