@@ -14,6 +14,10 @@ function assemble(operator::AbstractSpaceTimeOperator, test_functions, trial_fun
     if stagedtimestep
         return assemble(RungeKuttaConvolutionQuadrature(operator), test_functions, trial_functions)
     end
+    finitedifftimestep = isa(test_functions.time, FiniteDiffTimeStep)
+    if finitedifftimestep
+        return assemble(FiniteDiffConvolutionQuadrature(operator), test_functions, trial_functions)
+    end
     freeze, store = allocatestorage(operator, test_functions, trial_functions,
         storage_policy, long_delays_policy)
     assemble!(operator, test_functions, trial_functions, store, threading; quadstrat)

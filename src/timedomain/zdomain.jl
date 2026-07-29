@@ -13,6 +13,20 @@ function laplace_to_z(rho, n, N, dt, A, b)
 end
 
 """
+    laplace_to_z(rho, n, N, dt, method)
+
+Returns the scalar Laplace variable s corresponding to z = (1/rho)*exp(-2*im*pi*n/N)
+for a single-step finite difference method (BE/BDF2), i.e. the method's
+characteristic polynomial evaluated in 1/z.
+"""
+function laplace_to_z(rho, n, N, dt, method::FiniteDiffMethod)
+	iz = (1/rho)*exp(-2*im*pi*n/N)
+	@assert dt ≈ method.dt
+	s = method.p(iz)
+	return s
+end
+
+"""
     inverse_z_transform(k, rho, N, X)
 
 Returns the k-th term of the inverse z-transform. X is an array of the z-transform

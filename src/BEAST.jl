@@ -264,6 +264,7 @@ include("timedomain/tdexcitation.jl")
 include("timedomain/motlu.jl")
 include("timedomain/tdtimeops.jl")
 include("timedomain/rkcq.jl")
+include("timedomain/finitediffcq.jl")
 include("timedomain/zdomain.jl")
 include("timedomain/td_symmetric_quadstrat.jl")
 

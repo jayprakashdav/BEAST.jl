@@ -26,3 +26,21 @@ numfunctions(s::StagedTimeStep) = s.Nt
 
 numstages(s) = 1
 numstages(s::StagedTimeStep) = size(s.c,1)
+
+"""
+	FiniteDiffTimeStep{T,U,V}
+
+To be used in single step finite difference method schemes such as
+the backward euler or backward difference formula 2
+"""
+struct FiniteDiffTimeStep{T, U, V}
+	Δt::T
+	Nt::U
+	zTransformedTermCount ::U
+	contourRadius::T
+	method::V
+end
+
+numfunctions(s::FiniteDiffTimeStep) = s.Nt
+scalartype(fdts :: FiniteDiffTimeStep{T,U,V}) where {T,U,V} = T
+temporalbasis(fdts :: FiniteDiffTimeStep{T,U,V}) where {T,U,V} = timebasisdelta(fdts.Δt, fdts.Nt)
