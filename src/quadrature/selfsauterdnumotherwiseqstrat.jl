@@ -21,8 +21,10 @@ function quaddata(op::IntegralOperator,
 end
 
 
-function quadrule(op::IntegralOperator, g::RefSpace, f::RefSpace,  i, τ, j, σ, qd,
-    qs::SelfSauterOtherwiseDNumQStrat)
+function integrate!(op::IntegralOperator, g::RefSpace, f::RefSpace,  i, τ, j, σ, qd,
+    qs::SelfSauterOtherwiseDNumQStrat,
+    out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+    action::QuadRuleAction=ApplyIntegrate())
 
     T = eltype(eltype(τ.vertices))
     hits = 0
@@ -40,9 +42,13 @@ function quadrule(op::IntegralOperator, g::RefSpace, f::RefSpace,  i, τ, j, σ,
 
     @assert hits <= 3
 
-    hits == 3 && return SauterSchwabQuadrature.CommonFace(qd.gausslegendre[1])
+    if hits == 3
+        qrule = SauterSchwabQuadrature.CommonFace(qd.gausslegendre[1])
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
 
-    return DoubleQuadRule(
+    qrule = DoubleQuadRule(
         qd.tpoints[1,i],
         qd.bpoints[1,j],)
+    return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
 end

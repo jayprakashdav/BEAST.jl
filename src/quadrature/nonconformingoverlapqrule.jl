@@ -6,7 +6,7 @@ end
 #     return rank(G) == D 
 # end
 
-function momintegrals!(op,
+function integrate!(op,
     test_local_space, basis_local_space,
     test_chart::CompScienceMeshes.Simplex, basis_chart::CompScienceMeshes.Simplex,
     out, qrule::NonConformingOverlapQRule)
@@ -61,12 +61,10 @@ function momintegrals!(op,
         for (q,bchart) in enumerate(bsis_charts)
             restrict!(Q, basis_local_space, basis_chart, bchart, trial_overlaps[q])
 
-            qrule = quadrule(op, test_local_space, basis_local_space,
-                p, tchart, q, bchart, qdata, qstrat)
-
             fill!(zlocal, 0)
-            momintegrals!(op, test_local_space, basis_local_space,
-                tchart, bchart, zlocal, qrule)
+            integrate!(op, test_local_space, basis_local_space,
+                p, tchart, q, bchart, qdata, qstrat,
+                zlocal, test_local_space, nothing, basis_local_space, nothing; action=ApplyIntegrateNonConforming())
 
             for i in axes(P,1)
                 for j in axes(Q,1)

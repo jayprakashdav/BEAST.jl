@@ -42,7 +42,7 @@ function quadrule(op,
     return SymmetricQuadRule(qr1, qr2)
 end
 
-function momintegrals!(z, op, U, V, W, τ, σ, ι, qr::SymmetricQuadRule)
+function integrate!(z, op, U, V, W, τ, σ, ι, qr::SymmetricQuadRule)
 
     qr1 = qr.quadrule1
     qr2 = qr.quadrule2
@@ -50,8 +50,8 @@ function momintegrals!(z, op, U, V, W, τ, σ, ι, qr::SymmetricQuadRule)
     z1 = zero(z)
     z2 = zero(z)
 
-    momintegrals!(z1, op, U, V, W, τ, σ, ι, qr1)
-    momintegrals!(z2, op, V, U, W, σ, τ, ι, qr2)
+    integrate!(z1, op, U, V, W, τ, σ, ι, qr1)
+    integrate!(z2, op, V, U, W, σ, τ, ι, qr2)
     z2 = permutedims(z2, (2,1,3))
     z .+= (z1+z2)/2
     return nothing

@@ -79,45 +79,66 @@ function quaddata(op::IntegralOperator,
 end
 
 
-function quadrule(op::IntegralOperator, g::RefSpace, f::RefSpace,
+function integrate!(op::IntegralOperator, g::RefSpace, f::RefSpace,
     i, τ::CompScienceMeshes.Simplex{<:Any, 2},
     j, σ::CompScienceMeshes.Simplex{<:Any, 2},
-    qd, qs::DoubleNumSauterQstrat)
+    qd, qs::DoubleNumSauterQstrat,
+    out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+    action::QuadRuleAction=ApplyIntegrate())
 
     hits = _numhits(τ, σ)
     @assert hits <= 3
 
-    hits == 3 && return SauterSchwabQuadrature.CommonFace(qd.gausslegendre[3])
-    hits == 2 && return SauterSchwabQuadrature.CommonEdge(qd.gausslegendre[2])
-    hits == 1 && return SauterSchwabQuadrature.CommonVertex(qd.gausslegendre[1])
+    if hits == 3
+        qrule = SauterSchwabQuadrature.CommonFace(qd.gausslegendre[3])
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
+    if hits == 2
+        qrule = SauterSchwabQuadrature.CommonEdge(qd.gausslegendre[2])
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
+    if hits == 1
+        qrule = SauterSchwabQuadrature.CommonVertex(qd.gausslegendre[1])
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
 
-    return DoubleQuadRule(
+    qrule = DoubleQuadRule(
         qd.tpoints[1,i],
         qd.bpoints[1,j],)
+    return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
 end
 
 struct _TransposedStrat{A}
     strat::A
-end 
-
-function quadrule(op::IntegralOperator, g::RefSpace, f::RefSpace, 
-    i, τ::CompScienceMeshes.Simplex{<:Any, 3},
-    j, σ::CompScienceMeshes.Simplex{<:Any, 3}, 
-    qd, qs::DoubleNumSauterQstrat) 
-    qr_volume(op, g, f, i, τ, j, σ, qd, qs)
-end
-function quadrule(op::IntegralOperator, g::RefSpace, f::RefSpace, 
-    i, τ::CompScienceMeshes.Simplex{<:Any, 3},
-    j, σ::CompScienceMeshes.Simplex{<:Any, 2}, 
-    qd, qs::DoubleNumSauterQstrat) 
-    qr_boundary(op, g, f, i, τ, j, σ, qd, qs)
 end
 
-function quadrule(op::IntegralOperator, g::RefSpace, f::RefSpace, 
+function integrate!(op::IntegralOperator, g::RefSpace, f::RefSpace,
+    i, τ::CompScienceMeshes.Simplex{<:Any, 3},
+    j, σ::CompScienceMeshes.Simplex{<:Any, 3},
+    qd, qs::DoubleNumSauterQstrat,
+    out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+    action::QuadRuleAction=ApplyIntegrate())
+    qrule = qr_volume(op, g, f, i, τ, j, σ, qd, qs)
+    integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+end
+function integrate!(op::IntegralOperator, g::RefSpace, f::RefSpace,
+    i, τ::CompScienceMeshes.Simplex{<:Any, 3},
+    j, σ::CompScienceMeshes.Simplex{<:Any, 2},
+    qd, qs::DoubleNumSauterQstrat,
+    out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+    action::QuadRuleAction=ApplyIntegrate())
+    qrule = qr_boundary(op, g, f, i, τ, j, σ, qd, qs)
+    integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+end
+
+function integrate!(op::IntegralOperator, g::RefSpace, f::RefSpace,
     i, τ::CompScienceMeshes.Simplex{<:Any, 2},
-    j, σ::CompScienceMeshes.Simplex{<:Any, 3}, 
-    qd, qs::DoubleNumSauterQstrat) 
-    _TransposedStrat(qr_boundary(op, g, f, i, τ, j, σ, qd, qs))
+    j, σ::CompScienceMeshes.Simplex{<:Any, 3},
+    qd, qs::DoubleNumSauterQstrat,
+    out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+    action::QuadRuleAction=ApplyIntegrate())
+    qrule = _TransposedStrat(qr_boundary(op, g, f, i, τ, j, σ, qd, qs))
+    integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
 end
 
 function qr_volume(op::IntegralOperator, g::RefSpace, f::RefSpace, i, τ, j, σ, qd, qs)
@@ -204,22 +225,34 @@ function qr_boundary(op::IntegralOperator, g::RefSpace, f::RefSpace, i, τ, j,  
 
 end
 
-function quadrule(op::IntegralOperator, g::RefSpace, f::RefSpace,
+function integrate!(op::IntegralOperator, g::RefSpace, f::RefSpace,
     i, τ::CompScienceMeshes.Quadrilateral,
     j, σ::CompScienceMeshes.Quadrilateral,
-    qd, qs::DoubleNumSauterQstrat)
+    qd, qs::DoubleNumSauterQstrat,
+    out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+    action::QuadRuleAction=ApplyIntegrate())
 
     hits = _numhits(τ, σ)
     @assert hits != 3
     @assert hits <= 4
 
-    hits == 4 && return SauterSchwabQuadrature.CommonFaceQuad(qd.gausslegendre[3])
-    hits == 2 && return SauterSchwabQuadrature.CommonEdgeQuad(qd.gausslegendre[2])
-    hits == 1 && return SauterSchwabQuadrature.CommonVertexQuad(qd.gausslegendre[1])
+    if hits == 4
+        qrule = SauterSchwabQuadrature.CommonFaceQuad(qd.gausslegendre[3])
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
+    if hits == 2
+        qrule = SauterSchwabQuadrature.CommonEdgeQuad(qd.gausslegendre[2])
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
+    if hits == 1
+        qrule = SauterSchwabQuadrature.CommonVertexQuad(qd.gausslegendre[1])
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
 
-    return DoubleQuadRule(
+    qrule = DoubleQuadRule(
         qd.tpoints[1,i],
         qd.bpoints[1,j],)
+    return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
 end
 
 

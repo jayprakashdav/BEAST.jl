@@ -22,8 +22,8 @@ function assemblechunk!(biop::IntegralOperator, tfs::Space, bfs::Space, store)
     for (p,tcell) in enumerate(test_elements), (q,bcell) in enumerate(bsis_elements)
 
         fill!(zlocal, 0)
-        strat = quadrule(biop, tshapes, bshapes, p, tcell, q, bcell, qd)
-        momintegrals!(biop, tshapes, bshapes, tcell, bcell, zlocal, strat)
+        integrate!(biop, tshapes, bshapes, p, tcell, q, bcell, qd, zlocal, tfs, p, bfs, q;
+            action=ApplyIntegrate())
 
         for j in 1 : num_bshapes, i in 1 : num_tshapes
             z = zlocal[i,j]
@@ -68,21 +68,24 @@ Before entering the double for loop that is responsible for the enumeration of a
 
 ```julia
 fill!(zlocal, 0)
-strat = quadrule(biop, tshapes, bshapes, p, tcell, q, bcell, qd)
-momintegrals!(biop, tshapes, bshapes, tcell, bcell, zlocal, strat)
+integrate!(biop, tshapes, bshapes, p, tcell, q, bcell, qd, zlocal, tfs, p, bfs, q;
+    action=ApplyIntegrate())
 ```
 
-For a given pair `(tcell,bcell)` of test cell and trial cell (with respective indices `p` and `q` in collections `test_elements` and `bsis_elements`), all possible interactions between local shape functions are computed. After resetting the buffer used to store these interactions, the quadrature strategy is determined. The quadrature strategy in general could depend on:
+For a given pair `(tcell,bcell)` of test cell and trial cell (with respective indices `p` and `q` in collections `test_elements` and `bsis_elements`), all possible interactions between local shape functions are computed. After resetting the buffer used to store these interactions, the quadrature strategy is determined and applied. The quadrature strategy in general could depend on:
 
 - the kernel `biop` defining the integral operator,
 - the local test and trial shape functions `tshapes` and `bshapes` (functions of high polynomial degree and functions that are highly oscillatory typically require bespoke integration methods),
 - and the geometric test and trial cells `tcell` and `bcell` (cells that touch or are near to each other lead to quickly varying or even singular integrands requiring dedicated integration rules).
 
-The method returns an object `strat` that: (i) describes (by its type and its data fields) the integration strategy that is appropriate to compute the current set of local interactions, (ii) contains all data precomputed and stored in `qd` that is relevant to this particular integration (for example a set of quadrature points and weights). This explains why the indices `p` and `q` where passed too `quadrule`: they allow for the quick retrieval of relevant pre-stored data from `qd`.
+The `integrate!` method that dispatches on the quadrature strategy builds an object `strat` internally that: (i) describes (by its type and its data fields) the integration strategy that is appropriate to compute the current set of local interactions, (ii) contains all data precomputed and stored in `qd` that is relevant to this particular integration (for example a set of quadrature points and weights). This explains why the indices `p` and `q` are passed in: they allow for the quick retrieval of relevant pre-stored data from `qd`.
 
-The routing that is responsible for the actual computation of the interactions between the local shape functions takes the quadrule object `strat` as one of its arguments. The idea is that `momintegrals!` has many methods, not only for different types of kernel and shape functions, but also for different types of `strat`. For example, there are implementations of `momintegrals!` for the computation of the Maxwellian single layer operator w.r.t. spaces of Raviart-Thomas elements that employ double numerical quadrature, singularity extraction, and even more advanced integration routines.
+Rather than returning `strat` to the caller, this method passes it straight to the other method of `integrate!` from within the same branch that constructed it. `integrate!` has many methods, not only for different types of kernel, shape functions and quadrature strategy, but also for different types of `strat`.
 
-*Note*: the type of `strat` depends on the orientation of the two interacting geometric cells. This information is only available at runtime. In other words, there will be a slight type instability at this point in the code. This is by design however, and not different from the use of virtual functions in an c++ implementation. Numerical experiments show that this form of runtime polymorphism results in negligible runtime overhead.
+*Note*: the type of `strat` depends on the orientation of the two interacting geometric cells, information only available at runtime, so `strat` is inherently type-unstable across different `(tcell,bcell)` pairs. Building `strat` and consuming it via `integrate!` *within the same method/branch* (rather than returning it to a separately-compiled caller, as used to be the case) keeps that instability local: the compiler can still resolve the call for each branch statically instead of falling back to a dynamic dispatch on the wide union of possible `strat` types. If you only need `strat` itself (e.g. for inspection), call with `action=ReturnQRule()`.
+
+!!! note
+    Before BEAST 2.10, the quadrature-strategy-dispatching method described here was a separate function called `quadrule`, which just returned `strat` to a caller that then called `momintegrals!` (now `integrate!`) on it: the two-step call that motivated the dynamic-dispatch problem above. `quadrule` still exists as a distinct function for a few operator families outside `IntegralOperator` (local operators, excitations, farfield/nearfield postprocessing).
 
 When all possible interactions between local shape functions have been computed, they need to be stored in the global system matrix. This is done in the matrix assembly loop:
 
@@ -133,11 +136,14 @@ function quaddata(operator::SingleLayerTrace,
   return (tpoints=tqd, bpoints=bqd)
 end
 
-function quadrule(op::SingleLayerTrace, g::LagrangeRefSpace, f::LagrangeRefSpace, i, τ, j, σ, qd)
-    DoubleQuadRule(
+function integrate!(op::SingleLayerTrace, g::LagrangeRefSpace, f::LagrangeRefSpace, i, τ, j, σ, qd,
+        qs, out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+        action::QuadRuleAction=ApplyIntegrate())
+    strat = DoubleQuadRule(
         qd.tpoints[1,i],
         qd.bpoints[1,j]
     )
+    integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, strat)
 end
 
 integrand(op::SingleLayerTrace, kernel, g, τ, f, σ) = f[1]*g[1]*kernel.green
@@ -145,7 +151,7 @@ integrand(op::SingleLayerTrace, kernel, g, τ, f, σ) = f[1]*g[1]*kernel.green
 
 Every kernel corresponds with a type. Kernels can potentially depend on a set of parameters; these appear as fields in the type. Here our Nitsche kernel depends on the wavenumber. In quaddata we precompute quadrature points for all geometric cells in the supports of test and trial elements. This is fairly sloppy: only one rule for test and trial integration is considered. A high accuracy implementation would typically compute points for both low quality and high quality quadrature rules.
 
-Also `quadrule` is sloppy: we always select a `DoubleQuadRule` to perform the computation of interactions between local shape functions. No singularity extraction or other advanced technique is considered for nearby interactions. Clearly amateurs at work here!
+Also this method of `integrate!` is sloppy: we always select a `DoubleQuadRule` to perform the computation of interactions between local shape functions. No singularity extraction or other advanced technique is considered for nearby interactions. Clearly amateurs at work here!
 
 `BEAST` provides a default implementation of an integration routine using double numerical quadrature. All that is required to tap into that implementation is a method overloading `integrand`. From the above formula it is clear what this method should look like.
 

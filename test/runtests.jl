@@ -51,6 +51,7 @@ include("test_assemblerow.jl")
 # include("test_mixed_blkassm.jl")
 include("test_local_assembly.jl")
 include("test_assemble_refinements.jl")
+include("test_quadrule_integrate_dispatch.jl")
 
 include("test_dipole.jl")
 

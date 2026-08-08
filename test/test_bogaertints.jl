@@ -30,10 +30,10 @@ SE_strategy = BE.WiltonSERule(
 	bqd[1,1],
   ),
 )
-BEAST.momintegrals!(op, x, x, t, t, z1, SE_strategy)
+BEAST.integrate!(op, x, x, t, t, z1, SE_strategy)
 
 EE_strategy = BEAST.BogaertSelfPatchStrategy(20)
-BEAST.momintegrals!(op, x, x, t, t, z2, EE_strategy)
+BEAST.integrate!(op, x, x, t, t, z2, EE_strategy)
 
 Γ = meshrectangle(1.0, 1.0, 1.0)
 t = chart(Γ, Γ.faces[1])
@@ -42,7 +42,7 @@ s = chart(Γ, Γ.faces[2])
 
 z3 = zeros(ComplexF64, n, n)
 EE_strategy = BEAST.BogaertEdgePatchStrategy(13,30)
-BEAST.momintegrals!(op, x, x, t, s, z3, EE_strategy)
+BEAST.integrate!(op, x, x, t, s, z3, EE_strategy)
 
 z4 = zeros(ComplexF64, n, n)
 tqd = BE.quadpoints(x, [t], (12,13))
@@ -54,7 +54,7 @@ SE_strategy = BE.WiltonSERule(
 	bqd[1,1],
   ),
 )
-BEAST.momintegrals!(op, x, x, t, s, z4, SE_strategy)
+BEAST.integrate!(op, x, x, t, s, z4, SE_strategy)
 
 p = [
     point(0.0, 0.0, 0.0),
@@ -68,7 +68,7 @@ s = simplex(p[1], p[4], p[5])
 
 z5 = zeros(ComplexF64, n, n)
 EE_strategy = BEAST.BogaertPointPatchStrategy(9,10)
-BEAST.momintegrals!(op, x, x, t, s, z5, EE_strategy)
+BEAST.integrate!(op, x, x, t, s, z5, EE_strategy)
 
 z6 = zeros(ComplexF64, n, n)
 tqd = BE.quadpoints(x, [t], (12,13))
@@ -80,7 +80,7 @@ SE_strategy = BE.WiltonSERule(
 	bqd[1,1],
   ),
 )
-BEAST.momintegrals!(op, x, x, t, s, z6, SE_strategy)
+BEAST.integrate!(op, x, x, t, s, z6, SE_strategy)
 
 @test norm(z1-z2)/norm(z1) < 1.0e-6
 @test norm(z3-z4)/norm(z3) < 3.0e-6
@@ -127,9 +127,9 @@ s3 = BE.DoubleQuadRule(
   tqd[1,1],
 )
 
-BEAST.momintegrals!(op, x, x, t1, t2, z1, s1)
-BEAST.momintegrals!(op, x, x, t1, t2, z2, s2)
-BEAST.momintegrals!(op, x, x, t1, t2, z3, s3)
+BEAST.integrate!(op, x, x, t1, t2, z1, s1)
+BEAST.integrate!(op, x, x, t1, t2, z2, s2)
+BEAST.integrate!(op, x, x, t1, t2, z3, s3)
 
 @test norm(z2-z1)/norm(z2) < 1.0e-3
 
@@ -148,9 +148,9 @@ s3 = BE.DoubleQuadRule(
   tqd[1,1],
 )
 
-fill!(z1, 0); BEAST.momintegrals!(op, x, x, t2, t3, z1, s1)
-fill!(z2, 0); BEAST.momintegrals!(op, x, x, t2, t3, z2, s2)
-fill!(z3, 0); BEAST.momintegrals!(op, x, x, t2, t3, z3, s3)
+fill!(z1, 0); BEAST.integrate!(op, x, x, t2, t3, z1, s1)
+fill!(z2, 0); BEAST.integrate!(op, x, x, t2, t3, z2, s2)
+fill!(z3, 0); BEAST.integrate!(op, x, x, t2, t3, z3, s3)
 
 @test norm(z2-z1)/norm(z2) < 2.0e-6
 
@@ -169,9 +169,9 @@ s3 = BE.DoubleQuadRule(
   tqd[1,1],
 )
 
-fill!(z1, 0); BEAST.momintegrals!(op, x, x, t1, t1, z1, s1)
-fill!(z2, 0); BEAST.momintegrals!(op, x, x, t1, t1, z2, s2)
-fill!(z3, 0); BEAST.momintegrals!(op, x, x, t1, t1, z3, s3)
+fill!(z1, 0); BEAST.integrate!(op, x, x, t1, t1, z1, s1)
+fill!(z2, 0); BEAST.integrate!(op, x, x, t1, t1, z2, s2)
+fill!(z3, 0); BEAST.integrate!(op, x, x, t1, t1, z3, s3)
 
 
 

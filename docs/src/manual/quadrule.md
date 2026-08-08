@@ -1,5 +1,8 @@
 # Designing your own quadrature rule and strategy
 
+!!! note
+    As of BEAST 2.10, the function to extend for `IntegralOperator` quadrature strategies (as in this tutorial) is `integrate!`, not `quadrule`. `quadrule` remains a separate, still-existing function used by non-`IntegralOperator` families (local operators, excitations, farfield/nearfield postprocessing), which are outside the scope of this tutorial. See the repository's `CHANGELOG.md` for details.
+
 In the context of multi-trace solvers, testing and trial functions with logically separate but geometrically coinciding support can interact. In general these support can be equipped with completely indepenent meshes.
 
 For meshes of flat faceted triangular panels, BEAST.jl defines the `BEAST.NonConformingIntegralOpQStrat` strategy. The constructor of `NonConformingIntegralOpQStrat` takes another quadratue strategy `ctrat` that is fit to deal with pairs of mutually conforming meshes of flat faceted meshes. For a pair comprising a test triangle and a trial triangle, the appropriate quadrature rule is chosen as follows:
@@ -27,7 +30,7 @@ struct NonConfTestBaryRefOfTrialQStrat{P} <: BEAST.AbstractQuadStrat
 end
 ```
 
-The semantics of the quadrature strategy are captured by the definition of a pair of methods for the functions **quaddata** and **quadrule**, respectively. The purpose of quaddata is the computation of cache data that can speed up the assembly. Typically, this involves computing and storing triangle normals, and the quadrature points and weights for the various quadrature rules that the quadrature strategy considers.
+The semantics of the quadrature strategy are captured by the definition of a pair of methods for the functions **quaddata** and **integrate!**, respectively. The purpose of quaddata is the computation of cache data that can speed up the assembly. Typically, this involves computing and storing triangle normals, and the quadrature points and weights for the various quadrature rules that the quadrature strategy considers.
 
 Because in the majority of cases, the computation of the interaction is deferred to the conforming quadrature strategy, the computation of the cache is forwarded to its method of quaddata, resulting simply in:
 
@@ -40,20 +43,28 @@ function BEAST.quaddata(a, X, Y, test_charts, trial_charts,
 end
 ```
 
-The method of `quadrule` is key to the definition of the quadrature strategy and contains the the actual algorithm in charge of choosing the quadrature rule for any given pair of triangles:
+The method of `integrate!` that dispatches on the quadrature strategy is key to the definition of the quadrature strategy and contains the actual algorithm in charge of choosing the quadrature rule for any given pair of triangles:
 
 ```julia
-function BEAST.quadrule(a, X, Y, i, test_chart, j, trial_chart, qd,
-    quadstrat::NonConfTestBaryRefOfTrialQStrat)
+function BEAST.integrate!(a, X, Y, i, test_chart, j, trial_chart, qd,
+    quadstrat::NonConfTestBaryRefOfTrialQStrat,
+    out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+    action::BEAST.QuadRuleAction=BEAST.ApplyIntegrate())
 
     nh = BEAST._numhits(test_chart, trial_chart)
-    nh > 0 && return TestInBaryRefOfTrialQRule(quadstrat.conforming_qstrat)
-    return BEAST.quadrule(a, X, Y, i, test_chart, j, trial_chart, qd,
-        quadstrat.conforming_qstrat)
+    if nh > 0
+        qrule = TestInBaryRefOfTrialQRule(quadstrat.conforming_qstrat)
+        return BEAST.integrate!(action, out, a, test_space, tptr, test_chart, trial_space, bptr, trial_chart, qrule)
+    end
+    return BEAST.integrate!(a, X, Y, i, test_chart, j, trial_chart, qd,
+        quadstrat.conforming_qstrat,
+        out, test_space, tptr, trial_space, bptr; action)
 end
 ```
 
-The function body is essentially a one-to-one translation of the quadrature rule selection algorithm above to julia. The object `qd` passed to `quadrule` is the cache computed by quadrule. In our case, it is simply passed on to the underlying conforming quadrature rule in the case of well separated triangles.
+The function body is essentially a one-to-one translation of the quadrature rule selection algorithm above to julia. The object `qd` passed in is the cache computed by `quaddata`. In our case, it is simply passed on to the underlying conforming quadrature strategy in the case of well separated triangles.
+
+The trailing `out, test_space, tptr, trial_space, bptr` arguments and the `action` keyword are what let this method evaluate the interaction directly: instead of returning the rule object `qrule` to a separately-compiled caller (which would force a dynamic dispatch, since the type of `qrule` depends on runtime geometry), it calls the *other* method of `integrate!` right where `qrule` is constructed, so the compiler still knows its concrete type at that call site. `action=BEAST.ApplyIntegrate()` (the default) evaluates the rule into `out`; `action=BEAST.ReturnQRule()` recovers the pre-2.10 behaviour of just returning `qrule`, which is what the recursive sub-assembly below relies on.
 
 Next, we define a type representing the quadrature rule that is used when test triangle and trial triangle are not well-separated:
 
@@ -63,10 +74,10 @@ struct TestInBaryRefOfTrialQRule{S}
 end
 ```
 
-The type `TestInBaryRefOfTrialQRule` refers to the quadrature rule that is responsible for the actual computation of the interactions in case of adjacency or overlap. Quadrature rules are implemented by specifying a method for the function `BEAST.momintegrals!`.
+The type `TestInBaryRefOfTrialQRule` refers to the quadrature rule that is responsible for the actual computation of the interactions in case of adjacency or overlap. Quadrature rules are implemented by specifying a method for the function `BEAST.integrate!`.
 
 ```julia
-function BEAST.momintegrals!(out, op,
+function BEAST.integrate!(out, op,
     test_functions, test_cell, test_chart,
     trial_functions, trial_cell, trial_chart,
     qr::TestInBaryRefOfTrialQRule)
@@ -124,13 +135,13 @@ function BEAST.momintegrals!(out, op,
     Q = zeros(T, num_tshapes, num_bshapes)
     out1 = zero(out)
     for (q,chart) in enumerate(trial_charts)
-        qr1 = BEAST.quadrule(op, test_local_space, trial_local_space,
-            1, test_chart, q ,chart, qd, quadstrat)
+        qr1 = BEAST.integrate!(op, test_local_space, trial_local_space,
+            1, test_chart, q ,chart, qd, quadstrat; action=BEAST.ReturnQRule())
             
         BEAST.restrict!(Q, trial_local_space, trial_chart, chart, X[q])
 
         fill!(out1, 0)
-        BEAST.momintegrals!(out1, op,
+        BEAST.integrate!(out1, op,
             test_functions, nothing, test_chart,
             trial_functions, nothing, chart, qr1)
 
@@ -144,12 +155,12 @@ end end end end end
 The algorithm constructs the charts of the barycentric refinement of the trial chart, which either share a vertex or an edge with the test chart, or completely coincide with the test chart. Because of this, contributions from any of the refinement charts can be computed accuratey by a classic quadrature rule:
 
 ```julia
-momintegrals!(outq, op,
+integrate!(outq, op,
     test_functions, nothing, test_chart,
     trial_functions, nothing, chart, qr)
 ```
 
-This call to `momintegrals!` calculates interactions between the shape functions on the original test chart and the shape functions on one of the six subcharts in the refinement of the trial chart. The corresponding contribution to the interaction with the shape functions on the coarse trial chart can be calculated if we know how the restriction of the coarse shape functions to any of the subcharts can be written as linear combinations of the shape on that subchart. This information is provided by
+This call to `integrate!` calculates interactions between the shape functions on the original test chart and the shape functions on one of the six subcharts in the refinement of the trial chart. The corresponding contribution to the interaction with the shape functions on the coarse trial chart can be calculated if we know how the restriction of the coarse shape functions to any of the subcharts can be written as linear combinations of the shape on that subchart. This information is provided by
 
 ```julia
 BEAST.restrict!(Q, trial_local_space, trial_chart, chart, X[q])
@@ -160,7 +171,7 @@ For efficiency, the overlap function from the domain of `chart` to the domain of
 !!! note
     The quadrature strategy and related quadrature rules implemented here can be rearded as meta-strategies, and meta-rules, as they defer most of the heavy lifting to underlying strategies and rules for mutually conforming meshes.
 
-    In a *primitive* rule, methods of `momintegrals!` typically contain implementations of numerical quadrature methods.
+    In a *primitive* rule, methods of `integrate!` typically contain implementations of numerical quadrature methods.
 
 To verify correctness of the above strategy, we can compare the results against existing routines that either provide less accurate results or similar results at reduced efficiency.
 

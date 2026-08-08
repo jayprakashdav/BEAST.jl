@@ -150,6 +150,46 @@ function progressbar(workload, verbose; color=:white, kwargs...)
     )
 end
 
+"""
+    QuadRuleAction
+
+Supertype for the values [`integrate!`](@ref) dispatches on to decide what to do
+with a quadrature rule once it has picked one for a given pair of elements: apply
+it right away ([`ApplyIntegrate`](@ref), [`ApplyIntegrateNonConforming`](@ref)),
+or hand it back to the caller unevaluated ([`ReturnQRule`](@ref)).
+"""
+abstract type QuadRuleAction end
+
+"""
+    ApplyIntegrate()
+
+The standard `action` for [`integrate!`](@ref): evaluate the quadrature rule into
+the output buffer right away, from within the same method/branch that built it.
+Doing so lets the choice of which `integrate!` method to run for that rule resolve
+statically, instead of through a dynamic dispatch on the union of possible
+rule types a given quadrature strategy can produce.
+"""
+struct ApplyIntegrate <: QuadRuleAction end
+
+"""
+    ReturnQRule()
+
+`action` for [`integrate!`](@ref) that returns the built quadrature rule instead
+of evaluating it. Used for introspection and for testing.
+"""
+struct ReturnQRule <: QuadRuleAction end
+
+"""
+    ApplyIntegrateNonConforming()
+
+Like [`ApplyIntegrate`](@ref), but for the non-conforming-mesh rules
+(`NonConformingOverlapQRule`, `NonConformingTouchQRule`). Their own `integrate!`
+methods are reached only after the generic dispatcher has already stripped the
+test/trial `Space` down to local refspaces, so there is no full `Space` left to
+pass through the `ApplyIntegrate` path.
+"""
+struct ApplyIntegrateNonConforming <: QuadRuleAction end
+
 include("utils/polynomial.jl")
 include("utils/specialfns.jl")
 include("utils/combinatorics.jl")

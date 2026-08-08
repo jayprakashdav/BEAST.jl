@@ -64,9 +64,9 @@ function quadinfo(op, tfs, bfs; quadstrat=defaultquadstrat(op, tfs, bfs))
     println(@which BEAST.quaddata(op,tref,bref,tels,bels,quadstrat))
 
     qd = quaddata(op,tref,bref,tels,bels,quadstrat)
-    println(@which quadrule(op,tref,bref,i,τ,j,σ,qd,quadstrat))
+    println(@which integrate!(op,tref,bref,i,τ,j,σ,qd,quadstrat))
 
-    nothing
+    integrate!(op,tref,bref,i,τ,j,σ,qd,quadstrat; action=ReturnQRule())
 end
 
 """
@@ -98,7 +98,11 @@ used to accurately compute the interaction integrals. The `quad_data` object cre
 by `quaddata` is passed to allow reuse of any precomputed data such as quadrature
 points and weights, geometric quantities, etc.
 
-The type of the returned quadrature rule will help in deciding which method of
-`momintegrals` to dispatch to.
+!!! note
+    For `IntegralOperator`s (the common BEM assembly case), this role is played by
+    [`integrate!`](@ref) instead, which folds rule construction and evaluation into
+    a single, overloaded function. `quadrule` remains in use as shown above for a
+    handful of other operator families (local operators, excitations, farfield and
+    nearfield postprocessing).
 """
 function quadrule end

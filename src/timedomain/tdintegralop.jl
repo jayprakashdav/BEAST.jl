@@ -32,7 +32,7 @@ Base.eltype(::EmptyRP) = Int
 defaultquadstrat(::EmptyRP, tfs, bfs) = NothingQStrategy()
 quaddata(op::EmptyRP, xs...) = nothing
 quadrule(op::EmptyRP, xs...) = nothing
-momintegrals!(z, op::EmptyRP, xs...) = nothing
+integrate!(z, op::EmptyRP, xs...) = nothing
 
 function allocatestorage(op::RetardedPotential, testST, basisST,
 	::Type{Val{:densestorage}},
@@ -283,7 +283,7 @@ function assemble_chunk!(op::RetardedPotential, testST, trialST, store;
 	            # compute interactions between reference shape functions
 	            fill!(z, 0)
 	            qr = quadrule(op, U, V, W, p, τ, q, σ, r, ι, qd, quadstrat)
-                momintegrals!(z, op, U, V, W, τ, σ, ι, qr)
+                integrate!(z, op, U, V, W, τ, σ, ι, qr)
 
 		        # assemble in the global matrix
                 for d in 1 : wdim
@@ -328,7 +328,7 @@ struct WiltonInts84Strat{T,V,W}
 end
 
 
-function momintegrals!(z, op, g, f, T, τ, σ, ι, qr::WiltonInts84Strat)
+function integrate!(z, op, g, f, T, τ, σ, ι, qr::WiltonInts84Strat)
 
     XW = qr.outer_quad_points
     for p in 1 : length(XW)

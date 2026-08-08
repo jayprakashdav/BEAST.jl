@@ -93,10 +93,8 @@ function assemblechunk!(op::QuasiLocalOperator, tfs::Space, bfs::Space, store321
                 @assert q <= size(bad.data, 3)
 
                 fill!(zlocal, 0)
-                qrule = quadrule(op, trefs, brefs, p, tcell, q, bcell, qd, quadstrat)
-                momintegrals!(zlocal, op,
-                    tfs, tptr, tcell,
-                    bfs, bptr, bcell, qrule)
+                integrate!(op, trefs, brefs, p, tcell, q, bcell, qd, quadstrat,
+                    zlocal, tfs, tptr, bfs, bptr; action=ApplyIntegrate())
 
                 for j in 1 : length(bad[q])
                     for i in 1 : length(tad[p])

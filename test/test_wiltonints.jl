@@ -343,7 +343,7 @@ tqd = BE.quadpoints(x, [t], (12,))
 bqd = BE.quadpoints(x, [s], (13,))
 
 DQ_strategy = BE.DoubleQuadRule(tqd[1,1], bqd[1,1])
-BEAST.momintegrals!(z1, op,
+BEAST.integrate!(z1, op,
     X, nothing, t,
     X, nothing, s, DQ_strategy)
 
@@ -354,7 +354,7 @@ SE_strategy = BE.WiltonSERule(
 	bqd[1,1],
   ),
 )
-BEAST.momintegrals!(z2, op,
+BEAST.integrate!(z2, op,
     X, nothing, t,
     X, nothing, s, SE_strategy)
 

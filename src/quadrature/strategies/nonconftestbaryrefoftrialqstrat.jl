@@ -6,14 +6,20 @@ function BEAST.quaddata(a, X, Y, tels, bels, qs::NonConfTestBaryRefOfTrialQStrat
     return BEAST.quaddata(a, X, Y, tels, bels, qs.conforming_qstrat)
 end
 
-function BEAST.quadrule(a, 𝒳, 𝒴, i, τ, j, σ, qd,
-    quadstrat::NonConfTestBaryRefOfTrialQStrat)
+function BEAST.integrate!(a, 𝒳, 𝒴, i, τ, j, σ, qd,
+    quadstrat::NonConfTestBaryRefOfTrialQStrat,
+    out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+    action::BEAST.QuadRuleAction=BEAST.ApplyIntegrate())
 
     # return TestInBaryRefOfTrialQRule(quadstrat.conforming_qstrat)
     nh = BEAST._numhits(τ, σ)
-    nh > 0 && return TestInBaryRefOfTrialQRule(quadstrat.conforming_qstrat)
-    return BEAST.quadrule(a, 𝒳, 𝒴, i, τ, j, σ, qd,
-        quadstrat.conforming_qstrat)
+    if nh > 0
+        qrule = TestInBaryRefOfTrialQRule(quadstrat.conforming_qstrat)
+        return BEAST.integrate!(action, out, a, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
+    return BEAST.integrate!(a, 𝒳, 𝒴, i, τ, j, σ, qd,
+        quadstrat.conforming_qstrat,
+        out, test_space, tptr, trial_space, bptr; action)
 end
 
 @testitem "NonConfTestBaryRefOfTrialQStrat" begin

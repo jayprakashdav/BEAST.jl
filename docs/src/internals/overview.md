@@ -45,8 +45,7 @@ Informally speaking, a Discrete Operator is a concept that allows for the comput
 A discrete operator is a triple `(kernel, test_basis, trial_basis)`, where `kernel` is a Kernel, and `test_basis` and `trial_basis` are Bases. In addition, the following expressions should be implemented and behave according to the correct semantics:
 
 - [`quaddata(operator,test_refspace,trial_refspace,test_elements,trial_elements)`](@ref): create the data required for the computation of element-element interactions during assembly of discrete operator matrices.
-- [`quadrule(operator,test_refspace,trial_refspace,p,test_element,q_trial_element,qd)`](@ref): returns an integration strategy object that will be passed to `momintegrals!` to select an integration strategy. This rule can depend on the test/trial reference spaces and interacting elements. The indices `p` and `q` refer to the position of the interacting elements in the enumeration defined by `geometry(basis)` and allow for fast retrieval of any element specific data stored in the quadrature data object `qd`.
-- [`momintegrals!(operator,test_refspace,trial_refspace,test_element,trial_element,zlocal,qr)`](@ref): this function computes the local interaction matrix between the set of local test and trial shape functions and a specific pair of elements. The target matrix `zlocal` is provided as an argument to minimise memory allocations over subsequent calls. `qr` is an object returned by `quadrule` and contains all static and dynamic data defining the integration strategy used.
+- [`integrate!(operator,test_refspace,trial_refspace,p,test_element,q_trial_element,qd, qs, out, test_space, tptr, trial_space, bptr)`](@ref): this is the single generic function, overloaded twice over. One method, dispatching on the quadrature strategy, builds an integration strategy object `qr` describing (by its type and data fields) how to compute the interaction for the given pair of elements, using data precomputed in `qd`; the indices `p` and `q` refer to the position of the elements in the enumeration defined by `geometry(basis)` and allow fast retrieval of the relevant pre-stored data. Rather than returning `qr`, that method immediately calls the *other* method from within the same method/branch, which computes the local interaction matrix into the target buffer `zlocal`. Building and consuming `qr` in the same branch like this, instead of returning it to a separately-compiled caller, is what avoids a dynamic dispatch on `qr`'s type (which depends on the runtime geometry of the interacting elements, so is only known at runtime). Pass `action=BEAST.ReturnQRule()` to get `qr` back unevaluated instead of the default `action=BEAST.ApplyIntegrate()`. (Before BEAST 2.10 these were two separate functions, `quadrule` and `momintegrals!`; `quadrule` remains a distinct function for a few operator families outside `IntegralOperator`, such as local operators, excitations, and farfield/nearfield postprocessing.)
 
 In the context of fast methods such as the Fast Multipole Method other algorithms on Discrete Operators will typically be defined to compute matrix vector products. These algorithms do not explicitly compute and store the interaction matrix (this would lead to unacceptable computational and memory complexity).
 
@@ -64,6 +63,5 @@ refspace
 
 ```@docs; canonical=false
 quaddata
-quadrule
-momintegrals!
+integrate!
 ```

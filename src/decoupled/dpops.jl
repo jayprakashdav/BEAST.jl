@@ -17,7 +17,7 @@ function integrand(op::CurlSingleLayerDP3D, kernel_vals,
     return -α * dot(nx × gx, ∇G * fy)
 end
 
-function momintegrals!(out, op::CurlSingleLayerDP3D,
+function integrate!(out, op::CurlSingleLayerDP3D,
     test_local_space::RTRefSpace, tptr, test_triangular_element,
     trial_local_space::LagrangeRefSpace, bptr, trial_triangular_element,
     qrule::SauterSchwabStrategy)

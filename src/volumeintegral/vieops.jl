@@ -506,19 +506,33 @@ end
 """
 tetrahedron-tetrahedron quadrule for the 6D integral ∫∫∫_Ω ∫∫∫_Ω 
 """
-function quadrule(op::VolumeOperator, g::RefSpace, f::RefSpace, 
-    i, τ::CompScienceMeshes.Simplex{<:Any, 3, <:Any, 4}, 
-    j, σ::CompScienceMeshes.Simplex{<:Any, 3, <:Any, 4}, 
-    qd, qs::SauterSchwab3DQStrat)
+function integrate!(op::VolumeOperator, g::RefSpace, f::RefSpace,
+    i, τ::CompScienceMeshes.Simplex{<:Any, 3, <:Any, 4},
+    j, σ::CompScienceMeshes.Simplex{<:Any, 3, <:Any, 4},
+    qd, qs::SauterSchwab3DQStrat,
+    out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+    action::QuadRuleAction=ApplyIntegrate())
 
     hits, idx_t, idx_s = _hits(τ, σ)
 
     @assert hits <= 4
 
-    hits == 4 && return SauterSchwab3D.CommonVolume6D_S(SauterSchwab3D.Singularity6DVolume(idx_t,idx_s),(qd.sing_qp[1],qd.sing_qp[2],qd.sing_qp[4]))
-    hits == 3 && return SauterSchwab3D.CommonFace6D_S(SauterSchwab3D.Singularity6DFace(idx_t,idx_s),(qd.sing_qp[1],qd.sing_qp[2],qd.sing_qp[3]))
-    hits == 2 && return SauterSchwab3D.CommonEdge6D_S(SauterSchwab3D.Singularity6DEdge(idx_t,idx_s),(qd.sing_qp[1],qd.sing_qp[2],qd.sing_qp[3],qd.sing_qp[4]))
-    hits == 1 && return SauterSchwab3D.CommonVertex6D_S(SauterSchwab3D.Singularity6DPoint(idx_t,idx_s),qd.sing_qp[3])
+    if hits == 4
+        qrule = SauterSchwab3D.CommonVolume6D_S(SauterSchwab3D.Singularity6DVolume(idx_t,idx_s),(qd.sing_qp[1],qd.sing_qp[2],qd.sing_qp[4]))
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
+    if hits == 3
+        qrule = SauterSchwab3D.CommonFace6D_S(SauterSchwab3D.Singularity6DFace(idx_t,idx_s),(qd.sing_qp[1],qd.sing_qp[2],qd.sing_qp[3]))
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
+    if hits == 2
+        qrule = SauterSchwab3D.CommonEdge6D_S(SauterSchwab3D.Singularity6DEdge(idx_t,idx_s),(qd.sing_qp[1],qd.sing_qp[2],qd.sing_qp[3],qd.sing_qp[4]))
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
+    if hits == 1
+        qrule = SauterSchwab3D.CommonVertex6D_S(SauterSchwab3D.Singularity6DPoint(idx_t,idx_s),qd.sing_qp[3])
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
     #=
     #Classic tensor-product quadrature rules
     hits == 4 && return SauterSchwab3D.CommonVolume6D(SauterSchwab3D.Singularity6DVolume(idx_t,idx_s),qd.sing_qp[1])
@@ -527,25 +541,37 @@ function quadrule(op::VolumeOperator, g::RefSpace, f::RefSpace,
     hits == 1 && return SauterSchwab3D.CommonVertex6D(SauterSchwab3D.Singularity6DPoint(idx_t,idx_s),qd.sing_qp[1])
     =#
 
-    return DoubleQuadRule(qd[1][1,i], qd[2][1,j])
+    qrule = DoubleQuadRule(qd[1][1,i], qd[2][1,j])
+    return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
 end
 
 
 """
 triangle-tetrahedron quadrule for the 5D integral ∫∫_Γ ∫∫∫_Ω
 """
-function quadrule(op::BoundaryOperator, g::RefSpace, f::RefSpace,
+function integrate!(op::BoundaryOperator, g::RefSpace, f::RefSpace,
     i, τ::CompScienceMeshes.Simplex{<:Any, 2, <:Any, 3},
     j, σ::CompScienceMeshes.Simplex{<:Any, 3, <:Any, 4},
-    qd, qs::SauterSchwab3DQStrat)
+    qd, qs::SauterSchwab3DQStrat,
+    out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+    action::QuadRuleAction=ApplyIntegrate())
 
     hits, idx_t, idx_s = _hits(τ, σ)
-   
+
     @assert hits <= 3
 
-    hits == 3 && return SauterSchwab3D.CommonFace5D_S(SauterSchwab3D.Singularity5DFace(idx_s,idx_t),(qd.sing_qp[1],qd.sing_qp[2],qd.sing_qp[3]))
-    hits == 2 && return SauterSchwab3D.CommonEdge5D_S(SauterSchwab3D.Singularity5DEdge(idx_s,idx_t),(qd.sing_qp[1],qd.sing_qp[2],qd.sing_qp[3]))
-    hits == 1 && return SauterSchwab3D.CommonVertex5D_S(SauterSchwab3D.Singularity5DPoint(idx_s,idx_t),(qd.sing_qp[3],qd.sing_qp[2]))
+    if hits == 3
+        qrule = SauterSchwab3D.CommonFace5D_S(SauterSchwab3D.Singularity5DFace(idx_s,idx_t),(qd.sing_qp[1],qd.sing_qp[2],qd.sing_qp[3]))
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
+    if hits == 2
+        qrule = SauterSchwab3D.CommonEdge5D_S(SauterSchwab3D.Singularity5DEdge(idx_s,idx_t),(qd.sing_qp[1],qd.sing_qp[2],qd.sing_qp[3]))
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
+    if hits == 1
+        qrule = SauterSchwab3D.CommonVertex5D_S(SauterSchwab3D.Singularity5DPoint(idx_s,idx_t),(qd.sing_qp[3],qd.sing_qp[2]))
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
     #=
     #Classic tensor-product quadrature rules
     hits == 3 && return SauterSchwab3D.CommonFace5D(SauterSchwab3D.Singularity5DFace(idx_s,idx_t),qd.sing_qp[1])
@@ -553,25 +579,37 @@ function quadrule(op::BoundaryOperator, g::RefSpace, f::RefSpace,
     hits == 1 && return SauterSchwab3D.CommonVertex5D(SauterSchwab3D.Singularity5DPoint(idx_s,idx_t),qd.sing_qp[1])
     =#
 
-    return DoubleQuadRule(qd[1][1,i], qd[2][1,j])
+    qrule = DoubleQuadRule(qd[1][1,i], qd[2][1,j])
+    return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
 end
 
 
 """
 tetrahedron-triangle quadrule for the 5D integral ∫∫∫_Ω ∫∫_Γ
 """
-function quadrule(op::BoundaryOperator, g::RefSpace, f::RefSpace,
+function integrate!(op::BoundaryOperator, g::RefSpace, f::RefSpace,
     i, τ::CompScienceMeshes.Simplex{<:Any, 3, <:Any, 4},
     j, σ::CompScienceMeshes.Simplex{<:Any, 2, <:Any, 3},
-    qd, qs::SauterSchwab3DQStrat)
+    qd, qs::SauterSchwab3DQStrat,
+    out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+    action::QuadRuleAction=ApplyIntegrate())
 
     hits, idx_t, idx_s = _hits(τ, σ)
 
     @assert hits <= 3
 
-    hits == 3 && return SauterSchwab3D.CommonFace5D_S(SauterSchwab3D.Singularity5DFace(idx_t,idx_s),(qd.sing_qp[1],qd.sing_qp[2],qd.sing_qp[3]))
-    hits == 2 && return SauterSchwab3D.CommonEdge5D_S(SauterSchwab3D.Singularity5DEdge(idx_t,idx_s),(qd.sing_qp[1],qd.sing_qp[2],qd.sing_qp[3]))
-    hits == 1 && return SauterSchwab3D.CommonVertex5D_S(SauterSchwab3D.Singularity5DPoint(idx_t,idx_s),(qd.sing_qp[3],qd.sing_qp[2]))
+    if hits == 3
+        qrule = SauterSchwab3D.CommonFace5D_S(SauterSchwab3D.Singularity5DFace(idx_t,idx_s),(qd.sing_qp[1],qd.sing_qp[2],qd.sing_qp[3]))
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
+    if hits == 2
+        qrule = SauterSchwab3D.CommonEdge5D_S(SauterSchwab3D.Singularity5DEdge(idx_t,idx_s),(qd.sing_qp[1],qd.sing_qp[2],qd.sing_qp[3]))
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
+    if hits == 1
+        qrule = SauterSchwab3D.CommonVertex5D_S(SauterSchwab3D.Singularity5DPoint(idx_t,idx_s),(qd.sing_qp[3],qd.sing_qp[2]))
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
     #=
     #Classic tensor-product quadrature rules
     hits == 3 && return SauterSchwab3D.CommonFace5D(SauterSchwab3D.Singularity5DFace(idx_t,idx_s),qd.sing_qp[1])
@@ -579,7 +617,8 @@ function quadrule(op::BoundaryOperator, g::RefSpace, f::RefSpace,
     hits == 1 && return SauterSchwab3D.CommonVertex5D(SauterSchwab3D.Singularity5DPoint(idx_t,idx_s),qd.sing_qp[1])
     =#
 
-    return DoubleQuadRule(qd[1][1,i], qd[2][1,j])
+    qrule = DoubleQuadRule(qd[1][1,i], qd[2][1,j])
+    return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
 end
 
 

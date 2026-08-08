@@ -17,14 +17,16 @@ function quaddata(op::IntegralOperator,
     return (tpoints=tqd, bpoints=bqd)
 end
 
-function quadrule(op::IntegralOperator, g::RTRefSpace, f::RTRefSpace, i, τ, j, σ, qd,
-    qs::DoubleNumWiltonBogaertQStrat)
+function integrate!(op::IntegralOperator, g::RTRefSpace, f::RTRefSpace, i, τ, j, σ, qd,
+    qs::DoubleNumWiltonBogaertQStrat,
+    out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+    action::QuadRuleAction=ApplyIntegrate())
 
     dtol = 1.0e3 * eps(eltype(eltype(τ.vertices)))
     xtol = 0.2
-  
+
     k = norm(gamma(op))
-  
+
     hits = 0
     xmin = xtol
     for t in τ.vertices
@@ -37,21 +39,33 @@ function quadrule(op::IntegralOperator, g::RTRefSpace, f::RTRefSpace, i, τ, j, 
         end
       end
     end
-  
-    hits == 3   && return BogaertSelfPatchStrategy(5)
-    hits == 2   && return BogaertEdgePatchStrategy(8, 4)
-    hits == 1   && return BogaertPointPatchStrategy(2, 3)
+
+    if hits == 3
+        qrule = BogaertSelfPatchStrategy(5)
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
+    if hits == 2
+        qrule = BogaertEdgePatchStrategy(8, 4)
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
+    if hits == 1
+        qrule = BogaertPointPatchStrategy(2, 3)
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
     rmin = xmin/k
-    xmin < xtol && return WiltonSERule(
-      qd.tpoints[1,i],
-      DoubleQuadRule(
-        qd.tpoints[2,i],
-        qd.bpoints[2,j],
-      ),
-    )
-    return DoubleQuadRule(
+    if xmin < xtol
+        qrule = WiltonSERule(
+            qd.tpoints[1,i],
+            DoubleQuadRule(
+                qd.tpoints[2,i],
+                qd.bpoints[2,j],
+            ),
+        )
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
+    qrule = DoubleQuadRule(
       qd.tpoints[1,i],
       qd.bpoints[1,j],
     )
-  
+    return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
   end

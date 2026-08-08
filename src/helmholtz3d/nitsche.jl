@@ -18,13 +18,16 @@ function quaddata(operator::NitscheHH3,
   return (tpoints=tqd, bpoints=bqd)
 end
 
-function quadrule(op::NitscheHH3, g::LagrangeRefSpace, f::LagrangeRefSpace, i, τ, j, σ, qd,
-        qs::DoubleNumWiltonSauterQStrat)
-        
-    DoubleQuadRule(
+function integrate!(op::NitscheHH3, g::LagrangeRefSpace, f::LagrangeRefSpace, i, τ, j, σ, qd,
+        qs::DoubleNumWiltonSauterQStrat,
+        out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+        action::QuadRuleAction=ApplyIntegrate())
+
+    qrule = DoubleQuadRule(
         qd.tpoints[1,i],
         qd.bpoints[1,j]
     )
+    integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
 end
 
 

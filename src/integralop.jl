@@ -33,7 +33,7 @@ function blockassembler end
 #     quadrule(operator,test_refspace,trial_refspace,p,test_element,q_trial_element, qd)
 
 # Returns an object that contains all the dynamic (runtime) information that
-# defines the integration strategy that will be used by `momintegrals!` to compute
+# defines the integration strategy that will be used by `integrate!` to compute
 # the interactions between the local test/trial functions defined on the specified
 # geometric elements. The indices `p` and `q` refer to the position of the test
 # and trial elements as encountered during iteration over the output of
@@ -48,6 +48,48 @@ function blockassembler end
 # computation time.
 # """
 # function quadrule end
+
+"""
+    integrate!(operator, test_refspace, trial_refspace, test_index, test_chart,
+        trial_index, trial_chart, quad_data, quadstrat,
+        out, test_space, test_ptr, trial_space, trial_ptr; action::QuadRuleAction=ApplyIntegrate())
+    integrate!(out, operator, test_space, test_ptr, test_chart,
+        trial_space, trial_ptr, trial_chart, qrule)
+
+For `IntegralOperator` assembly, `integrate!` is overloaded twice over (folded
+together in BEAST 2.10 from what used to be the separate `quadrule` and
+`momintegrals!` functions):
+
+- One family of methods, dispatching on `quadstrat`, builds the quadrature rule
+  appropriate for the given pair of elements (the role `quadrule` used to play
+  on its own), then either evaluates it into `out` or returns it unevaluated, depending on
+  `action` (see [`ApplyIntegrate`](@ref), [`ReturnQRule`](@ref),
+  [`ApplyIntegrateNonConforming`](@ref)). Doing this in one step, rather than
+  returning the rule to a separate caller for it to dispatch on, avoids a
+  dynamic dispatch on the wide union of rule types a given `quadstrat` can
+  produce.
+- The other family of methods, dispatching on the concrete type of an
+  already-built `qrule` (the role `momintegrals!` used to play), performs the
+  actual numerical integration into `out`.
+"""
+function integrate! end
+
+# Called by the `integrate!` methods above that dispatch on `quadstrat`, once one
+# of them has built a concrete `qrule`, from within the same branch/method that
+# constructed it, so the type of `qrule` is still known to the compiler and this
+# dispatch resolves statically instead of at runtime.
+integrate!(::ApplyIntegrate, out, op, test_space, tptr, tcell, trial_space, bptr, bcell, qrule) =
+    integrate!(out, op, test_space, tptr, tcell, trial_space, bptr, bcell, qrule)
+
+integrate!(::ReturnQRule, out, op, test_space, tptr, tcell, trial_space, bptr, bcell, qrule) = qrule
+
+# Same idea as the ApplyIntegrate case above, but for the non-conforming-mesh rules,
+# whose `qrule` (test_space/trial_space here are local refspaces, not a full Space)
+# is reached only after the generic dispatcher in momintegrals.jl has already
+# stripped Space down to refspace. Skips straight to the refspace-level `integrate!`
+# instead of trying to re-derive a Space that isn't there to begin with.
+integrate!(::ApplyIntegrateNonConforming, out, op, test_space, tptr, tcell, trial_space, bptr, bcell, qrule) =
+    integrate!(op, test_space, trial_space, tcell, bcell, out, qrule)
 
 
 """
@@ -97,7 +139,7 @@ function assemblechunk!(biop::IntegralOperator, tfs::Space, bfs::Space, store;
     else
         quadstrat
     end
-    
+
     qd = quaddata(biop, tshapes, bshapes, test_elements, bsis_elements, qs)
     zlocal = zeros(scalartype(biop, tfs, bfs), 2num_tshapes, 2num_bshapes)
     # @show "after" qs
@@ -166,10 +208,10 @@ function assemblechunk_body!(biop, test_space, trial_space,
             bptr = trial_element_ptrs[Q]
 
             fill!(zlocal, 0)
-            qrule = quadrule(biop, refspace(test_space), refspace(trial_space),
-                P, tcell, Q, bcell, qd, quadstrat)
-            momintegrals!(zlocal, biop,
-                test_space,  tptr, tcell, trial_space, bptr, bcell, qrule)
+
+            integrate!(biop, refspace(test_space), refspace(trial_space),
+                P, tcell, Q, bcell, qd, quadstrat,
+                zlocal, test_space, tptr, trial_space, bptr; action=ApplyIntegrate())
             for j in 1 : num_bshapes
                 tadjq .= @view trial_assembly_data.data[:,j,q]
                 for i in 1 : num_tshapes
@@ -202,12 +244,12 @@ end end end end end end end
 #         @set scheduler = scheduler
 #         @local zlocal = zeros(scalartype(biop, test_space, trial_space), num_tshapes, num_bshapes)
 #         tcell, tptr = test_elements[p], test_cell_ptrs[p]
-    
+
 #         for q in trialelementids
 #             bcell, bptr = trial_elements[q], trial_cell_ptrs[q]
 #             fill!(zlocal, 0)
 #             @inline qrule = quadrule(biop, test_shapes, trial_shapes, p, tcell, q, bcell, qd, quadstrat)
-#             momintegrals!(zlocal, biop,
+#             integrate!(zlocal, biop,
 #                 test_space,  tptr, tcell,
 #                 trial_space, bptr, bcell, qrule)
 #             for j in 1:length(trial_assembly_data[q])
@@ -419,7 +461,7 @@ end
 
 #             fill!(zlocal, 0)
 #             qrule = quadrule(biop, tshapes, bshapes, p, tcell, q, bcell, quadrature_data, quadstrat)
-#             momintegrals!(zlocal, biop,
+#             integrate!(zlocal, biop,
 #                 tfs, p, tcell,
 #                 bfs, q, bcell, qrule)
 
@@ -432,7 +474,7 @@ end
 #                             m′ = get(test_id_in_blk, m, 0)
 #                             m′ == 0 && continue
 #                             store(a*zlocal[i,j]*b, m′, n′)
-#     end end end end end end 
+#     end end end end end end
 #     # put!(zlocals, zlocal)
 # end
 
@@ -637,11 +679,8 @@ function assemblerow_body!(biop,
         for (q,bcell) in enumerate(trial_elements)
 
             fill!(zlocal, 0)
-            qrule = quadrule(biop, test_shapes, trial_shapes, p, tcell, q, bcell, quadrature_data, quadstrat)
-            momintegrals!(zlocal, biop,
-                test_functions, nothing, tcell,
-                trial_functions, nothing, bcell,
-                qrule)
+            integrate!(biop, test_shapes, trial_shapes, p, tcell, q, bcell, quadrature_data, quadstrat,
+                zlocal, test_functions, nothing, trial_functions, nothing; action=ApplyIntegrate())
 
             for j in 1:size(zlocal,2)
                 for (n,b) in trial_assembly_data[q,j]
@@ -691,15 +730,10 @@ function assemblecol_body!(biop,
         for (p,tcell) in enumerate(test_elements)
 
             fill!(zlocal, 0)
-            qrule = quadrule(biop, test_shapes, trial_shapes, p, tcell, q, bcell, quadrature_data, quadstrat)
-            momintegrals!(zlocal, biop,
-                test_functions, nothing, tcell,
-                trial_functions, nothing, bcell, qrule)
+            integrate!(biop, test_shapes, trial_shapes, p, tcell, q, bcell, quadrature_data, quadstrat,
+                zlocal, test_functions, nothing, trial_functions, nothing; action=ApplyIntegrate())
 
             for i in 1:size(zlocal,1)
                 for (m,a) in test_assembly_data[p,i]
                     store(a*zlocal[i,j]*b, m, 1)
 end end end end end
-
-
-

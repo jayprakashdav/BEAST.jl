@@ -153,7 +153,7 @@ function sauterschwab_reorder(test_vertices, trial_vertices, rule::SauterSchwabQ
     return I, J
 end
 
-function momintegrals!(op::Operator,
+function integrate!(op::Operator,
     test_local_space, trial_local_space,
     test_chart, trial_chart,
     out, rule::Union{SauterSchwabStrategy,SauterSchwabQuadrature1D.SauterSchwabStrategy1D})
@@ -181,7 +181,7 @@ function momintegrals!(op::Operator,
     nothing
 end
 
-function momintegrals!(op::Operator,
+function integrate!(op::Operator,
     test_local_space, trial_local_space,
     test_chart, trial_chart,
     out, rule::SauterSchwab3DStrategy)
@@ -233,7 +233,7 @@ reversestrat(a::SauterSchwab3D.Singularity4DEdge) = SauterSchwab3D.Singularity4D
 reversestrat(a::SauterSchwab3D.Singularity4DFace) = SauterSchwab3D.Singularity4DFace(a.S, a.T)
 reversestrat(a::T) where {T <: SauterSchwab3D.SauterSchwab3DStrategy} = T(reversestrat(a.sing),a.qps)
 
-function momintegrals!(op::Operator,
+function integrate!(op::Operator,
     test_local_space, trial_local_space,
     test_chart, trial_chart,
     out, rule::_TransposedStrat{<:SauterSchwab3DStrategy})

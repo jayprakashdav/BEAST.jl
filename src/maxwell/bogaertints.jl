@@ -1,4 +1,4 @@
-function momintegrals!(z, op::MWSingleLayer3D,
+function integrate!(z, op::MWSingleLayer3D,
     g::RTRefSpace, tptr, t,
     f::RTRefSpace, bptr, s,
     strat::BogaertStrategy)
@@ -55,7 +55,7 @@ end
 
 
 
-function momintegrals!(z, op::MWDoubleLayer3D,
+function integrate!(z, op::MWDoubleLayer3D,
     g::RTRefSpace, tptr, τ,
     f::RTRefSpace, bptr, σ,
     strat::BogaertStrategy)

@@ -47,9 +47,9 @@ t1 = simplex(
   z_ss = [0.0im]
   z_double = [0.0im]
 
-  BEAST.momintegrals!(op1, lag0, lag0, t1, t1, z_se, SE_strategy)
-  BEAST.momintegrals!(op1, lag0, lag0, t1, t1, z_ss, SS_strategy)
-  BEAST.momintegrals!(op1, lag0, lag0, t1, t1, z_double, Double_strategy)
+  BEAST.integrate!(op1, lag0, lag0, t1, t1, z_se, SE_strategy)
+  BEAST.integrate!(op1, lag0, lag0, t1, t1, z_ss, SS_strategy)
+  BEAST.integrate!(op1, lag0, lag0, t1, t1, z_double, Double_strategy)
 
   @test z_se ≈ z_ss rtol=1e-5
   @test z_double ≈ z_ss rtol = 1e-1
@@ -70,9 +70,9 @@ t1 = simplex(
   z_se = zeros(complex(T),3,1)
   z_ss = zeros(complex(T),3,1)
   z_double = zeros(complex(T),3,1)
-  BEAST.momintegrals!(op1, lag1, lag0, t1, t1, z_ss, SS_strategy)
-  BEAST.momintegrals!(op1, lag1, lag0, t1, t1, z_se, SE_strategy)
-  BEAST.momintegrals!(op1, lag1, lag0, t1, t1, z_double, Double_strategy)
+  BEAST.integrate!(op1, lag1, lag0, t1, t1, z_ss, SS_strategy)
+  BEAST.integrate!(op1, lag1, lag0, t1, t1, z_se, SE_strategy)
+  BEAST.integrate!(op1, lag1, lag0, t1, t1, z_double, Double_strategy)
 
   @test z_ss ≈ z_se rtol = 1e-5
   @test z_ss ≈ z_double rtol = 1e-1
@@ -93,9 +93,9 @@ t1 = simplex(
   z_se = zeros(complex(T),1,3)
   z_ss = zeros(complex(T),1,3)
   z_double = zeros(complex(T),1,3)
-  BEAST.momintegrals!(op1, lag0, lag1, t1, t1, z_ss, SS_strategy)
-  BEAST.momintegrals!(op1, lag0, lag1, t1, t1, z_se, SE_strategy)
-  BEAST.momintegrals!(op1, lag0, lag1, t1, t1, z_double, Double_strategy)
+  BEAST.integrate!(op1, lag0, lag1, t1, t1, z_ss, SS_strategy)
+  BEAST.integrate!(op1, lag0, lag1, t1, t1, z_se, SE_strategy)
+  BEAST.integrate!(op1, lag0, lag1, t1, t1, z_double, Double_strategy)
 
   @test z_ss ≈ z_se rtol = 1e-5
   @test z_ss ≈ z_double rtol = 1e-1
@@ -116,9 +116,9 @@ t1 = simplex(
   z_se = zeros(complex(T),3,3)
   z_ss = zeros(complex(T),3,3)
   z_double = zeros(complex(T),3,3)
-  BEAST.momintegrals!(op1, lag1, lag1, t1, t1, z_ss, SS_strategy)
-  BEAST.momintegrals!(op1, lag1, lag1, t1, t1, z_se, SE_strategy)
-  BEAST.momintegrals!(op1, lag1, lag1, t1, t1, z_double, Double_strategy)
+  BEAST.integrate!(op1, lag1, lag1, t1, t1, z_ss, SS_strategy)
+  BEAST.integrate!(op1, lag1, lag1, t1, t1, z_se, SE_strategy)
+  BEAST.integrate!(op1, lag1, lag1, t1, t1, z_double, Double_strategy)
 
   @test z_ss ≈ z_se rtol = 1e-5
   @test z_ss ≈ z_double rtol = 1e-1
@@ -168,9 +168,9 @@ end
   z_cv_ss = zeros(complex(T),1,1)
   z_cv_double = zeros(complex(T),1,1)
 
-  BEAST.momintegrals!(op1, lag0, lag0, t1, t2, z_cv_se, SE_strategy)
-  BEAST.momintegrals!(op1, lag0, lag0, t1, t2, z_cv_ss, SS_strategy)
-  BEAST.momintegrals!(op1, lag0, lag0, t1, t2, z_cv_double, Double_strategy)
+  BEAST.integrate!(op1, lag0, lag0, t1, t2, z_cv_se, SE_strategy)
+  BEAST.integrate!(op1, lag0, lag0, t1, t2, z_cv_ss, SS_strategy)
+  BEAST.integrate!(op1, lag0, lag0, t1, t2, z_cv_double, Double_strategy)
 
   @test z_cv_double ≈ z_cv_ss rtol = 1e-4
   @test z_cv_se ≈ z_cv_ss rtol=1e-4
@@ -180,9 +180,9 @@ end
   z_cv_ss = zeros(complex(T),1,1)
   z_cv_double = zeros(complex(T),1,1)
 
-  BEAST.momintegrals!(op2, lag0, lag0, t1, t2, z_cv_se, SE_strategy)
-  BEAST.momintegrals!(op2, lag0, lag0, t1, t2, z_cv_ss, SS_strategy)
-  BEAST.momintegrals!(op2, lag0, lag0, t1, t2, z_cv_double, Double_strategy)
+  BEAST.integrate!(op2, lag0, lag0, t1, t2, z_cv_se, SE_strategy)
+  BEAST.integrate!(op2, lag0, lag0, t1, t2, z_cv_ss, SS_strategy)
+  BEAST.integrate!(op2, lag0, lag0, t1, t2, z_cv_double, Double_strategy)
 
   @test z_cv_double ≈ z_cv_ss rtol = 1e-4
   @test z_cv_se ≈ z_cv_double rtol=1e-4
@@ -193,9 +193,9 @@ end
   z_cv_ss = zeros(complex(T),1,1)
   z_cv_double = zeros(complex(T),1,1)
 
-  BEAST.momintegrals!(op3, lag0, lag0, t1, t2, z_cv_se, SE_strategy)
-  BEAST.momintegrals!(op3, lag0, lag0, t1, t2, z_cv_ss, SS_strategy)
-  BEAST.momintegrals!(op3, lag0, lag0, t1, t2, z_cv_double, Double_strategy)
+  BEAST.integrate!(op3, lag0, lag0, t1, t2, z_cv_se, SE_strategy)
+  BEAST.integrate!(op3, lag0, lag0, t1, t2, z_cv_ss, SS_strategy)
+  BEAST.integrate!(op3, lag0, lag0, t1, t2, z_cv_double, Double_strategy)
 
   @test z_cv_double ≈ z_cv_ss rtol = 1e-4
   @test z_cv_se ≈ z_cv_ss rtol=1e-4
@@ -216,9 +216,9 @@ end
   z_cv_ss = zeros(complex(T),3,3)
   z_cv_double = zeros(complex(T),3,3)
 
-  BEAST.momintegrals!(op1, lag1, lag1, t1, t2, z_cv_se, SE_strategy)
-  BEAST.momintegrals!(op1, lag1, lag1, t1, t2, z_cv_ss, SS_strategy)
-  BEAST.momintegrals!(op1, lag1, lag1, t1, t2, z_cv_double, Double_strategy)
+  BEAST.integrate!(op1, lag1, lag1, t1, t2, z_cv_se, SE_strategy)
+  BEAST.integrate!(op1, lag1, lag1, t1, t2, z_cv_ss, SS_strategy)
+  BEAST.integrate!(op1, lag1, lag1, t1, t2, z_cv_double, Double_strategy)
 
   @test z_cv_double ≈ z_cv_ss rtol = 1e-4
   @test z_cv_se ≈ z_cv_double rtol=1e-4
@@ -229,9 +229,9 @@ end
   z_cv_ss = zeros(complex(T),3,3)
   z_cv_double = zeros(complex(T),3,3)
 
-  BEAST.momintegrals!(op2, lag1, lag1, t1, t2, z_cv_se, SE_strategy)
-  BEAST.momintegrals!(op2, lag1, lag1, t1, t2, z_cv_ss, SS_strategy)
-  BEAST.momintegrals!(op2, lag1, lag1, t1, t2, z_cv_double, Double_strategy)
+  BEAST.integrate!(op2, lag1, lag1, t1, t2, z_cv_se, SE_strategy)
+  BEAST.integrate!(op2, lag1, lag1, t1, t2, z_cv_ss, SS_strategy)
+  BEAST.integrate!(op2, lag1, lag1, t1, t2, z_cv_double, Double_strategy)
 
   @test z_cv_double ≈ z_cv_ss rtol = 1e-4
   @test z_cv_se ≈ z_cv_ss rtol=1e-4
@@ -242,9 +242,9 @@ end
   z_cv_ss = zeros(complex(T),3,3)
   z_cv_double = zeros(complex(T),3,3)
 
-  BEAST.momintegrals!(op3, lag1, lag1, t1, t2, z_cv_se, SE_strategy)
-  BEAST.momintegrals!(op3, lag1, lag1, t1, t2, z_cv_ss, SS_strategy)
-  BEAST.momintegrals!(op3, lag1, lag1, t1, t2, z_cv_double, Double_strategy)
+  BEAST.integrate!(op3, lag1, lag1, t1, t2, z_cv_se, SE_strategy)
+  BEAST.integrate!(op3, lag1, lag1, t1, t2, z_cv_ss, SS_strategy)
+  BEAST.integrate!(op3, lag1, lag1, t1, t2, z_cv_double, Double_strategy)
 
   @test z_cv_double ≈ z_cv_ss rtol = 1e-3
   @test z_cv_double ≈ z_cv_se rtol = 1e-5
@@ -255,9 +255,9 @@ end
   z_cv_ss = zeros(complex(T),3,3)
   z_cv_double = zeros(complex(T),3,3)
 
-  BEAST.momintegrals!(op4, lag1, lag1, t1, t2, z_cv_se, SE_strategy)
-  BEAST.momintegrals!(op4, lag1, lag1, t1, t2, z_cv_ss, SS_strategy)
-  BEAST.momintegrals!(op4, lag1, lag1, t1, t2, z_cv_double, Double_strategy)
+  BEAST.integrate!(op4, lag1, lag1, t1, t2, z_cv_se, SE_strategy)
+  BEAST.integrate!(op4, lag1, lag1, t1, t2, z_cv_ss, SS_strategy)
+  BEAST.integrate!(op4, lag1, lag1, t1, t2, z_cv_double, Double_strategy)
 
   # @show z_cv_double
   # @show z_cv_se
@@ -285,9 +285,9 @@ end
   z_cv_ss = zeros(complex(T),3,1)
   z_cv_double = zeros(complex(T),3,1)
 
-  BEAST.momintegrals!(op1, lag1, lag0, t1, t2, z_cv_se, SE_strategy)
-  BEAST.momintegrals!(op1, lag1, lag0, t1, t2, z_cv_ss, SS_strategy)
-  BEAST.momintegrals!(op1, lag1, lag0, t1, t2, z_cv_double, Double_strategy)
+  BEAST.integrate!(op1, lag1, lag0, t1, t2, z_cv_se, SE_strategy)
+  BEAST.integrate!(op1, lag1, lag0, t1, t2, z_cv_ss, SS_strategy)
+  BEAST.integrate!(op1, lag1, lag0, t1, t2, z_cv_double, Double_strategy)
 
   @test z_cv_double ≈ z_cv_ss rtol = 1e-4
   @test z_cv_se ≈ z_cv_ss rtol=1e-4
@@ -298,9 +298,9 @@ end
   z_cv_ss = zeros(complex(T),3,1)
   z_cv_double = zeros(complex(T),3,1)
 
-  BEAST.momintegrals!(op2, lag1, lag0, t1, t2, z_cv_se, SE_strategy)
-  BEAST.momintegrals!(op2, lag1, lag0, t1, t2, z_cv_ss, SS_strategy)
-  BEAST.momintegrals!(op2, lag1, lag0, t1, t2, z_cv_double, Double_strategy)
+  BEAST.integrate!(op2, lag1, lag0, t1, t2, z_cv_se, SE_strategy)
+  BEAST.integrate!(op2, lag1, lag0, t1, t2, z_cv_ss, SS_strategy)
+  BEAST.integrate!(op2, lag1, lag0, t1, t2, z_cv_double, Double_strategy)
 
   @test z_cv_double ≈ z_cv_ss rtol = 1e-4
   @test z_cv_se ≈ z_cv_ss rtol=1e-4
@@ -311,9 +311,9 @@ end
   z_cv_ss = zeros(complex(T),3,1)
   z_cv_double = zeros(complex(T),3,1)
 
-  BEAST.momintegrals!(op3, lag1, lag0, t1, t2, z_cv_se, SE_strategy)
-  BEAST.momintegrals!(op3, lag1, lag0, t1, t2, z_cv_ss, SS_strategy)
-  BEAST.momintegrals!(op3, lag1, lag0, t1, t2, z_cv_double, Double_strategy)
+  BEAST.integrate!(op3, lag1, lag0, t1, t2, z_cv_se, SE_strategy)
+  BEAST.integrate!(op3, lag1, lag0, t1, t2, z_cv_ss, SS_strategy)
+  BEAST.integrate!(op3, lag1, lag0, t1, t2, z_cv_double, Double_strategy)
 
   @test z_cv_double ≈ z_cv_ss rtol = 1e-4
   @test z_cv_se ≈ z_cv_ss rtol=1e-4
@@ -337,9 +337,9 @@ end
   z_cv_ss = zeros(complex(T),1,3)
   z_cv_double = zeros(complex(T),1,3)
 
-  BEAST.momintegrals!(op1, lag0, lag1, t1, t2, z_cv_se, SE_strategy)
-  BEAST.momintegrals!(op1, lag0, lag1, t1, t2, z_cv_ss, SS_strategy)
-  BEAST.momintegrals!(op1, lag0, lag1, t1, t2, z_cv_double, Double_strategy)
+  BEAST.integrate!(op1, lag0, lag1, t1, t2, z_cv_se, SE_strategy)
+  BEAST.integrate!(op1, lag0, lag1, t1, t2, z_cv_ss, SS_strategy)
+  BEAST.integrate!(op1, lag0, lag1, t1, t2, z_cv_double, Double_strategy)
 
   @test z_cv_double ≈ z_cv_ss rtol = 1e-4
   @test z_cv_se ≈ z_cv_ss rtol=1e-4
@@ -350,9 +350,9 @@ end
   z_cv_ss = zeros(complex(T),1,3)
   z_cv_double = zeros(complex(T),1,3)
 
-  BEAST.momintegrals!(op2, lag0, lag1, t1, t2, z_cv_se, SE_strategy)
-  BEAST.momintegrals!(op2, lag0, lag1, t1, t2, z_cv_ss, SS_strategy)
-  BEAST.momintegrals!(op2, lag0, lag1, t1, t2, z_cv_double, Double_strategy)
+  BEAST.integrate!(op2, lag0, lag1, t1, t2, z_cv_se, SE_strategy)
+  BEAST.integrate!(op2, lag0, lag1, t1, t2, z_cv_ss, SS_strategy)
+  BEAST.integrate!(op2, lag0, lag1, t1, t2, z_cv_double, Double_strategy)
 
   @test z_cv_double ≈ z_cv_ss rtol = 1e-4
   @test z_cv_se ≈ z_cv_ss rtol=1e-4
@@ -363,9 +363,9 @@ end
   z_cv_ss = zeros(complex(T),1,3)
   z_cv_double = zeros(complex(T),1,3)
 
-  BEAST.momintegrals!(op3, lag0, lag1, t1, t2, z_cv_se, SE_strategy)
-  BEAST.momintegrals!(op3, lag0, lag1, t1, t2, z_cv_ss, SS_strategy)
-  BEAST.momintegrals!(op3, lag0, lag1, t1, t2, z_cv_double, Double_strategy)
+  BEAST.integrate!(op3, lag0, lag1, t1, t2, z_cv_se, SE_strategy)
+  BEAST.integrate!(op3, lag0, lag1, t1, t2, z_cv_ss, SS_strategy)
+  BEAST.integrate!(op3, lag0, lag1, t1, t2, z_cv_double, Double_strategy)
 
   @test z_cv_double ≈ z_cv_ss rtol = 1e-4
   @test z_cv_se ≈ z_cv_ss rtol=1e-4
@@ -414,9 +414,9 @@ end
   z_ce_ss = zeros(complex(T),1,1)
   z_ce_double = zeros(complex(T),1,1)
 
-  BEAST.momintegrals!(op1, lag0, lag0, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op1, lag0, lag0, t1, t2, z_ce_ss, SS_strategy)
-  BEAST.momintegrals!(op1, lag0, lag0, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op1, lag0, lag0, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op1, lag0, lag0, t1, t2, z_ce_ss, SS_strategy)
+  BEAST.integrate!(op1, lag0, lag0, t1, t2, z_ce_double, Double_strategy)
 
   @test z_ce_double ≈ z_ce_ss rtol = 1e-3
   @test z_ce_se ≈ z_ce_ss rtol=1e-4
@@ -427,9 +427,9 @@ end
   z_ce_ss = zeros(complex(T),1,1)
   z_ce_double = zeros(complex(T),1,1)
 
-  BEAST.momintegrals!(op2, lag0, lag0, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op2, lag0, lag0, t1, t2, z_ce_ss, SS_strategy)
-  BEAST.momintegrals!(op2, lag0, lag0, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op2, lag0, lag0, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op2, lag0, lag0, t1, t2, z_ce_ss, SS_strategy)
+  BEAST.integrate!(op2, lag0, lag0, t1, t2, z_ce_double, Double_strategy)
 
   @test z_ce_ss ≈ z_ce_double rtol = 1e-1
   @test z_ce_se ≈ z_ce_ss rtol = 1e-2
@@ -440,9 +440,9 @@ end
   z_ce_ss = zeros(complex(T),1,1)
   z_ce_double = zeros(complex(T),1,1)
 
-  BEAST.momintegrals!(op3, lag0, lag0, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op3, lag0, lag0, t1, t2, z_ce_ss, SS_strategy)
-  BEAST.momintegrals!(op3, lag0, lag0, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op3, lag0, lag0, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op3, lag0, lag0, t1, t2, z_ce_ss, SS_strategy)
+  BEAST.integrate!(op3, lag0, lag0, t1, t2, z_ce_double, Double_strategy)
 
   @test z_ce_double ≈ z_ce_ss rtol = 1e-1
   @test z_ce_se ≈ z_ce_ss rtol=1e-2
@@ -463,9 +463,9 @@ end
   z_ce_ss = zeros(complex(T),3,3)
   z_ce_double = zeros(complex(T),3,3)
 
-  BEAST.momintegrals!(op1, lag1, lag1, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op1, lag1, lag1, t1, t2, z_ce_ss, SS_strategy)
-  BEAST.momintegrals!(op1, lag1, lag1, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op1, lag1, lag1, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op1, lag1, lag1, t1, t2, z_ce_ss, SS_strategy)
+  BEAST.integrate!(op1, lag1, lag1, t1, t2, z_ce_double, Double_strategy)
 
   @test z_ce_double ≈ z_ce_ss rtol = 1e-3
   @test z_ce_se ≈ z_ce_double rtol=1e-3
@@ -476,9 +476,9 @@ end
   z_ce_ss = zeros(complex(T),3,3)
   z_ce_double = zeros(complex(T),3,3)
 
-  BEAST.momintegrals!(op2, lag1, lag1, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op2, lag1, lag1, t1, t2, z_ce_ss, SS_strategy)
-  BEAST.momintegrals!(op2, lag1, lag1, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op2, lag1, lag1, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op2, lag1, lag1, t1, t2, z_ce_ss, SS_strategy)
+  BEAST.integrate!(op2, lag1, lag1, t1, t2, z_ce_double, Double_strategy)
 
   @test z_ce_double ≈ z_ce_ss rtol = 1e-1
   @test z_ce_se ≈ z_ce_ss rtol=1e-4
@@ -489,9 +489,9 @@ end
   z_ce_ss = zeros(complex(T),3,3)
   z_ce_double = zeros(complex(T),3,3)
 
-  BEAST.momintegrals!(op3, lag1, lag1, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op3, lag1, lag1, t1, t2, z_ce_ss, SS_strategy)
-  BEAST.momintegrals!(op3, lag1, lag1, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op3, lag1, lag1, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op3, lag1, lag1, t1, t2, z_ce_ss, SS_strategy)
+  BEAST.integrate!(op3, lag1, lag1, t1, t2, z_ce_double, Double_strategy)
 
   @test z_ce_double ≈ z_ce_ss rtol = 1e-1
   @test z_ce_ss ≈ z_ce_se rtol = 1e-2
@@ -502,9 +502,9 @@ end
   z_ce_ss = zeros(complex(T),3,3)
   z_ce_double = zeros(complex(T),3,3)
 
-  BEAST.momintegrals!(op4, lag1, lag1, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op4, lag1, lag1, t1, t2, z_ce_ss, SS_strategy)
-  BEAST.momintegrals!(op4, lag1, lag1, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op4, lag1, lag1, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op4, lag1, lag1, t1, t2, z_ce_ss, SS_strategy)
+  BEAST.integrate!(op4, lag1, lag1, t1, t2, z_ce_double, Double_strategy)
 
   @test z_ce_double ≈ z_ce_ss rtol = 1e-3
   @test z_ce_se ≈ z_ce_ss rtol=1e-4
@@ -528,9 +528,9 @@ end
   z_ce_ss = zeros(complex(T),3,1)
   z_ce_double = zeros(complex(T),3,1)
 
-  BEAST.momintegrals!(op1, lag1, lag0, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op1, lag1, lag0, t1, t2, z_ce_ss, SS_strategy)
-  BEAST.momintegrals!(op1, lag1, lag0, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op1, lag1, lag0, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op1, lag1, lag0, t1, t2, z_ce_ss, SS_strategy)
+  BEAST.integrate!(op1, lag1, lag0, t1, t2, z_ce_double, Double_strategy)
 
   @test z_ce_double ≈ z_ce_ss rtol = 1e-3
   @test z_ce_se ≈ z_ce_ss rtol=1e-4
@@ -541,9 +541,9 @@ end
   z_ce_ss = zeros(complex(T),3,1)
   z_ce_double = zeros(complex(T),3,1)
 
-  BEAST.momintegrals!(op2, lag1, lag0, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op2, lag1, lag0, t1, t2, z_ce_ss, SS_strategy)
-  BEAST.momintegrals!(op2, lag1, lag0, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op2, lag1, lag0, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op2, lag1, lag0, t1, t2, z_ce_ss, SS_strategy)
+  BEAST.integrate!(op2, lag1, lag0, t1, t2, z_ce_double, Double_strategy)
 
   @test z_ce_double ≈ z_ce_ss rtol = 1e-1
   @test z_ce_se ≈ z_ce_ss rtol=1e-4
@@ -554,9 +554,9 @@ end
   z_ce_ss = zeros(complex(T),3,1)
   z_ce_double = zeros(complex(T),3,1)
 
-  BEAST.momintegrals!(op3, lag1, lag0, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op3, lag1, lag0, t1, t2, z_ce_ss, SS_strategy)
-  BEAST.momintegrals!(op3, lag1, lag0, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op3, lag1, lag0, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op3, lag1, lag0, t1, t2, z_ce_ss, SS_strategy)
+  BEAST.integrate!(op3, lag1, lag0, t1, t2, z_ce_double, Double_strategy)
 
   @test z_ce_double ≈ z_ce_ss rtol = 1e-1
   @test z_ce_se ≈ z_ce_ss rtol=1e-2
@@ -580,9 +580,9 @@ end
   z_ce_ss = zeros(complex(T),1,3)
   z_ce_double = zeros(complex(T),1,3)
 
-  BEAST.momintegrals!(op1, lag0, lag1, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op1, lag0, lag1, t1, t2, z_ce_ss, SS_strategy)
-  BEAST.momintegrals!(op1, lag0, lag1, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op1, lag0, lag1, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op1, lag0, lag1, t1, t2, z_ce_ss, SS_strategy)
+  BEAST.integrate!(op1, lag0, lag1, t1, t2, z_ce_double, Double_strategy)
 
   @test z_ce_double ≈ z_ce_ss rtol = 1e-3
   @test z_ce_se ≈ z_ce_ss rtol=1e-4
@@ -593,9 +593,9 @@ end
   z_ce_ss = zeros(complex(T),1,3)
   z_ce_double = zeros(complex(T),1,3)
 
-  BEAST.momintegrals!(op2, lag0, lag1, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op2, lag0, lag1, t1, t2, z_ce_ss, SS_strategy)
-  BEAST.momintegrals!(op2, lag0, lag1, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op2, lag0, lag1, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op2, lag0, lag1, t1, t2, z_ce_ss, SS_strategy)
+  BEAST.integrate!(op2, lag0, lag1, t1, t2, z_ce_double, Double_strategy)
 
   @test z_ce_double ≈ z_ce_ss rtol = 1e-1
   @test z_ce_se ≈ z_ce_ss rtol=1e-4
@@ -606,9 +606,9 @@ end
   z_ce_ss = zeros(complex(T),1,3)
   z_ce_double = zeros(complex(T),1,3)
 
-  BEAST.momintegrals!(op3, lag0, lag1, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op3, lag0, lag1, t1, t2, z_ce_ss, SS_strategy)
-  BEAST.momintegrals!(op3, lag0, lag1, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op3, lag0, lag1, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op3, lag0, lag1, t1, t2, z_ce_ss, SS_strategy)
+  BEAST.integrate!(op3, lag0, lag1, t1, t2, z_ce_double, Double_strategy)
 
   @test z_ce_double ≈ z_ce_ss rtol = 1e-1
   @test z_ce_se ≈ z_ce_ss rtol=1e-1
@@ -648,8 +648,8 @@ end
   z_ce_se = zeros(complex(T),1,1)
   z_ce_double = zeros(complex(T),1,1)
   
-  BEAST.momintegrals!(op1, lag0, lag0, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op1, lag0, lag0, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op1, lag0, lag0, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op1, lag0, lag0, t1, t2, z_ce_double, Double_strategy)
   
   @test z_ce_se ≈ z_ce_double rtol=1e-6
 
@@ -684,8 +684,8 @@ end
   z_ce_se = zeros(complex(T),3,3)
   z_ce_double = zeros(complex(T),3,3)
 
-  BEAST.momintegrals!(op1, lag1, lag1, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op1, lag1, lag1, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op1, lag1, lag1, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op1, lag1, lag1, t1, t2, z_ce_double, Double_strategy)
 
   @test z_ce_se ≈ z_ce_double rtol=1e-4
 
@@ -701,8 +701,8 @@ end
     bqd1[1,2])
   z_ce_se = zeros(complex(T),1,3)
   z_ce_double = zeros(complex(T),1,3)
-  BEAST.momintegrals!(op2, lag0, lag1, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op2, lag0, lag1, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op2, lag0, lag1, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op2, lag0, lag1, t1, t2, z_ce_double, Double_strategy)
   
   @test z_ce_se ≈ z_ce_double rtol = 1e-4
 
@@ -717,8 +717,8 @@ end
     bqd1[1,2])
   z_ce_se = zeros(complex(T),3,3)
   z_ce_double = zeros(complex(T),3,3)
-  BEAST.momintegrals!(op2, lag1, lag1, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op2, lag1, lag1, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op2, lag1, lag1, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op2, lag1, lag1, t1, t2, z_ce_double, Double_strategy)
 
   @test z_ce_se ≈ z_ce_double rtol = 1e-4
   # doublelayer transposed
@@ -733,8 +733,8 @@ end
   z_ce_se = zeros(complex(T),3,1)
   z_ce_double = zeros(complex(T),3,1)
 
-  BEAST.momintegrals!(op3, lag1, lag0, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op3, lag1, lag0, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op3, lag1, lag0, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op3, lag1, lag0, t1, t2, z_ce_double, Double_strategy)
 
   @test z_ce_se ≈ z_ce_double rtol=1e-4
 
@@ -749,8 +749,8 @@ end
   z_ce_se = zeros(complex(T),3,3)
   z_ce_double = zeros(complex(T),3,3)
 
-  BEAST.momintegrals!(op3, lag1, lag1, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op3, lag1, lag1, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op3, lag1, lag1, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op3, lag1, lag1, t1, t2, z_ce_double, Double_strategy)
 
   @test z_ce_se ≈ z_ce_double rtol=1e-4
   # hypersingular
@@ -766,8 +766,8 @@ end
   z_ce_se = zeros(complex(T),3,3)
   z_ce_double = zeros(complex(T),3,3)
 
-  BEAST.momintegrals!(op4, lag1, lag1, t1, t2, z_ce_se, SE_strategy)
-  BEAST.momintegrals!(op4, lag1, lag1, t1, t2, z_ce_double, Double_strategy)
+  BEAST.integrate!(op4, lag1, lag1, t1, t2, z_ce_se, SE_strategy)
+  BEAST.integrate!(op4, lag1, lag1, t1, t2, z_ce_double, Double_strategy)
   @test z_ce_se ≈ z_ce_double rtol = 1e-5
 
 end

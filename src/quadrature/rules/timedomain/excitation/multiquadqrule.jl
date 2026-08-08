@@ -6,7 +6,7 @@ end
 
 timequadrule(qr::MultiQuadStrategy, p) = qr.inner_rule
 
-function momintegrals!(z, exc::TDFunctional, testrefs, timerefs, τ, ρ, qr::MultiQuadStrategy)
+function integrate!(z, exc::TDFunctional, testrefs, timerefs, τ, ρ, qr::MultiQuadStrategy)
 
     for p in qr.quad_points
         x = p.point

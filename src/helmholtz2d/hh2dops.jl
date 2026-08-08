@@ -258,23 +258,32 @@ function quaddata(op::HelmholtzOperator2D,
     return (tpoints=tqd, bpoints=bqd, gausslegendre=leg, marokhlinwandura=mrw)
 end
 
-function quadrule(op::HelmholtzOperator2D, g::LagrangeRefSpace, f::LagrangeRefSpace,
+function integrate!(op::HelmholtzOperator2D, g::LagrangeRefSpace, f::LagrangeRefSpace,
     i, τ::CompScienceMeshes.Simplex{<:Any,1},
     j, σ::CompScienceMeshes.Simplex{<:Any,1},
-    qd, qs::DoubleNumSauterQstrat)
+    qd, qs::DoubleNumSauterQstrat,
+    out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+    action::QuadRuleAction=ApplyIntegrate())
 
     hits = _numhits(τ, σ)
     @assert hits <= 2
 
-    hits == 2 && return BEAST.SauterSchwabQuadrature1D.CommonEdge(qd.marokhlinwandura[2],
-        qd.gausslegendre[2])
-    hits == 1 && return BEAST.SauterSchwabQuadrature1D.CommonVertex(qd.marokhlinwandura[1],
-        qd.gausslegendre[1])
+    if hits == 2
+        qrule = BEAST.SauterSchwabQuadrature1D.CommonEdge(qd.marokhlinwandura[2],
+            qd.gausslegendre[2])
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
+    if hits == 1
+        qrule = BEAST.SauterSchwabQuadrature1D.CommonVertex(qd.marokhlinwandura[1],
+            qd.gausslegendre[1])
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
 
-    return DoubleQuadRule(
+    qrule = DoubleQuadRule(
         qd.tpoints[1, i],
         qd.bpoints[1, j],
     )
+    return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
 end
 
 function quaddata(op::HelmholtzOperator2D,
@@ -306,10 +315,12 @@ function quaddata(op::HelmholtzOperator2D,
     return (tpoints=tqd, bpoints=bqd, gausslegendre=leg, telles=tel, marokhlinwandura=mrw)
 end
 
-function quadrule(op::HelmholtzOperator2D, g::LagrangeRefSpace, f::LagrangeRefSpace,
+function integrate!(op::HelmholtzOperator2D, g::LagrangeRefSpace, f::LagrangeRefSpace,
     i, τ::CompScienceMeshes.Simplex{<:Any,1},
     j, σ::CompScienceMeshes.Simplex{<:Any,1},
-    qd, qs::DoubleNumSauterTellesQstrat)
+    qd, qs::DoubleNumSauterTellesQstrat,
+    out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+    action::QuadRuleAction=ApplyIntegrate())
     #Telles was found to be more accurate for angles ϕ<10°
     max_angle_deg = 10
     hits = _numhits(τ, σ)
@@ -319,15 +330,18 @@ function quadrule(op::HelmholtzOperator2D, g::LagrangeRefSpace, f::LagrangeRefSp
         #we find the angle between test and trial edge by using the tangents of the edges.
         α = acos((τ.tangents ⋅ σ.tangents) / norm(τ.tangents) * norm(σ.tangents))
         if α * (180 / π) > max_angle_deg
-            return BEAST.SauterSchwabQuadrature1D.CommonVertex(qd.marokhlinwandura[1],
+            qrule = BEAST.SauterSchwabQuadrature1D.CommonVertex(qd.marokhlinwandura[1],
                 qd.gausslegendre[1])
+            return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
         else
-            return BEAST.TellesQuadrature.TellesRule2D(qd.telles[2],
+            qrule = BEAST.TellesQuadrature.TellesRule2D(qd.telles[2],
                 qd.telles[1])
+            return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
         end
     elseif hits == 2        #Common Edge case
-        return BEAST.SauterSchwabQuadrature1D.CommonEdge(qd.marokhlinwandura[2],
+        qrule = BEAST.SauterSchwabQuadrature1D.CommonEdge(qd.marokhlinwandura[2],
             qd.gausslegendre[2])
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
     else                    #Near Singular case
         #in testing for parallel edges, it was found that Telles starts to yield a benefit
         #once there is a distance of about <= 0.5 * edge length between the edges. We
@@ -341,7 +355,8 @@ function quadrule(op::HelmholtzOperator2D, g::LagrangeRefSpace, f::LagrangeRefSp
         t1 = test_midpoint - nullpoint
         #if any of the endpoints of the trial edge is within the circle, we use Telles.
         if norm(t0) / τ.volume <= 0.5 || norm(t1) / τ.volume <= 0.5
-            return BEAST.TellesQuadrature.TellesRule2D(qd.telles[2], qd.telles[1])
+            qrule = BEAST.TellesQuadrature.TellesRule2D(qd.telles[2], qd.telles[1])
+            return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
         else
             t2 = cartesian(neighborhood(σ, 1.0)) - nullpoint
             #there exists a point closer to the test edge than the endpoints of the trial
@@ -351,15 +366,17 @@ function quadrule(op::HelmholtzOperator2D, g::LagrangeRefSpace, f::LagrangeRefSp
                 ϕ = acos(dot(t1, t2) / (norm(t1) * norm(t2)))
                 #if the relative distance is sufficiently small we use Telles
                 if norm(t1) * sin(ϕ) / τ.volume <= 0.5
-                    return BEAST.TellesQuadrature.TellesRule2D(qd.telles[2],
+                    qrule = BEAST.TellesQuadrature.TellesRule2D(qd.telles[2],
                         qd.telles[1])
+                    return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
                 end
             end
         end
     end
 
-    return DoubleQuadRule(  #Common case --> Gauss
+    qrule = DoubleQuadRule(  #Common case --> Gauss
         qd.tpoints[1, i],
         qd.bpoints[1, j],
     )
+    return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
 end

@@ -20,7 +20,7 @@ nothing # hide
 
 The type of the quadrature strategy object determines the quadrature rule selection algorithm. The value of the fields contained by the quadrature strategy object typically selects the order or number of quadrature points used by the various possible quadrature rules.
 
-The methods responsible for caching quadrature related data and quadrature rule selection are named `quaddata` and `quadrule`, respectively. For a given combination of a discrete boundary integral operator and quadrature strategy, the methods that will be dispatched to can be queried as follows:
+The methods responsible for caching quadrature related data and quadrature rule selection/evaluation are named `quaddata` and `integrate!`, respectively (`integrate!` was renamed and folded together from the earlier separate `quadrule`/`momintegrals!` pair in BEAST 2.10). For a given combination of a discrete boundary integral operator and quadrature strategy, the methods that will be dispatched to can be queried as follows:
 
 ```@example introductory
 using CompScienceMeshes
@@ -34,7 +34,6 @@ qs = BEAST.DoubleNumWiltonSauterQStrat(6, 7, 7, 8, 6, 6, 6, 6)
 
 ```@example introductory
 BEAST.quadinfo(𝑇, RT, RT; quadstrat=qs)
-nothing # hide
 ```
 
 ## Explicitly providing the quadrature strategy

@@ -5,11 +5,11 @@ end
 
 
 """
-momintegrals!(biop, tshs, bshs, tcell, bcell, interactions, strat)
+integrate!(biop, tshs, bshs, tcell, bcell, interactions, strat)
 
 Function for the computation of moment integrals using simple double quadrature.
 """
-function momintegrals!(biop,
+function integrate!(biop,
     tshs, bshs, tcell, bcell, z, strat::DoubleQuadRule)
 
     igd = Integrand(biop, tshs, bshs, tcell, bcell)

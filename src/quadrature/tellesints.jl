@@ -13,11 +13,11 @@ struct SingleNumTellesQStrat{R,T} <: AbstractQuadStrat
 end
 
 """
-extending the momintegrals! function for the Telles quadrature strategy. This is used for
+extending the integrate! function for the Telles quadrature strategy. This is used for
 near-singular integrals in 2D, where the singularity is not on the edge but close to it.
 """
 
-function momintegrals!(op::Operator,
+function integrate!(op::Operator,
     test_local_space, trial_local_space,
     test_chart, trial_chart,
     out, rule::BEAST.TellesQuadrature.TellesRule2D)

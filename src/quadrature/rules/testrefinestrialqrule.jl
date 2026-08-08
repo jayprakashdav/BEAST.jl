@@ -2,7 +2,7 @@ struct TestRefinesTrialQRule{S}
     conforming_qstrat::S
 end
 
-function momintegrals!(out, op,
+function integrate!(out, op,
     test_functions::Space, test_cell, test_chart,
     trial_functions::Space, trial_cell, trial_chart,
     qr::TestRefinesTrialQRule)
@@ -38,13 +38,10 @@ function momintegrals!(out, op,
     for (q,chart) in enumerate(trial_charts)
         restrict!(Q, trial_local_space, trial_chart, chart, trial_overlaps[q])
 
-        qr = quadrule(op, test_local_space, trial_local_space,
-            1, test_chart, q ,chart, qd, quadstrat)
-
         fill!(zlocal, 0)
-        momintegrals!(zlocal, op,
-            test_functions, nothing, test_chart,
-            trial_functions, nothing, chart, qr)
+        integrate!(op, test_local_space, trial_local_space,
+            1, test_chart, q, chart, qd, quadstrat,
+            zlocal, test_functions, nothing, trial_functions, nothing; action=ApplyIntegrate())
 
         for j in 1:num_bshapes
             for i in 1:num_tshapes

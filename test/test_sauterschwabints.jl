@@ -45,16 +45,16 @@ SS_strategy = SauterSchwabQuadrature.CommonFace(BEAST._legendre(8,T(0.0),T(1.0))
 z_se = zeros(3,3)
 z_ss = zeros(3,3)
 
-BEAST.momintegrals!(op1, rt, rt, t1, t1, z_se, SE_strategy)
-BEAST.momintegrals!(op1, rt, rt, t1, t1, z_ss, SS_strategy)
+BEAST.integrate!(op1, rt, rt, t1, t1, z_se, SE_strategy)
+BEAST.integrate!(op1, rt, rt, t1, t1, z_ss, SS_strategy)
 
 @test z_se ≈ z_ss atol=1e-4
 
 z_se2 = zeros(3,3)
 z_ss2 = zeros(3,3)
 
-BEAST.momintegrals!(op2, rt, rt, t1, t1, z_se2, SE_strategy)
-BEAST.momintegrals!(op2, rt, rt, t1, t1, z_ss2, SS_strategy)
+BEAST.integrate!(op2, rt, rt, t1, t1, z_se2, SE_strategy)
+BEAST.integrate!(op2, rt, rt, t1, t1, z_ss2, SS_strategy)
 
 @test z_se2 ≈ z_ss2 atol=1e-4
 
@@ -73,18 +73,18 @@ z_cv_ss_2 = zeros(3,3)
 z_cv_se_3 = zeros(3,3)
 z_cv_ss_3 = zeros(3,3)
 
-BEAST.momintegrals!(op1, rt, rt, t1, t2, z_cv_se_1, SE_strategy)
-BEAST.momintegrals!(op1, rt, rt, t1, t2, z_cv_ss_1, SS_strategy)
+BEAST.integrate!(op1, rt, rt, t1, t2, z_cv_se_1, SE_strategy)
+BEAST.integrate!(op1, rt, rt, t1, t2, z_cv_ss_1, SS_strategy)
 
 @test z_cv_se_1 ≈ z_cv_ss_1 atol=1e-7
 
-BEAST.momintegrals!(op2, rt, rt, t1, t2, z_cv_se_2, SE_strategy)
-BEAST.momintegrals!(op2, rt, rt, t1, t2, z_cv_ss_2, SS_strategy)
+BEAST.integrate!(op2, rt, rt, t1, t2, z_cv_se_2, SE_strategy)
+BEAST.integrate!(op2, rt, rt, t1, t2, z_cv_ss_2, SS_strategy)
 
 @test z_cv_se_2 ≈ z_cv_ss_2 atol=1e-7
 
-BEAST.momintegrals!(op3, rt, rt, t1, t2, z_cv_se_3, SE_strategy)
-BEAST.momintegrals!(op3, rt, rt, t1, t2, z_cv_ss_3, SS_strategy)
+BEAST.integrate!(op3, rt, rt, t1, t2, z_cv_se_3, SE_strategy)
+BEAST.integrate!(op3, rt, rt, t1, t2, z_cv_ss_3, SS_strategy)
 
 @show z_cv_se_3
 @show z_cv_ss_3
@@ -119,26 +119,26 @@ z_ce_ss_2 = zeros(3,3)
 z_ce_se_3 = zeros(3,3)
 z_ce_ss_3 = zeros(3,3)
 
-BEAST.momintegrals!(op1, rt, rt, t1, t2, z_ce_se_1, SE_strategy)
-BEAST.momintegrals!(op1, rt, rt, t1, t2, z_ce_ss_1, SS_strategy)
+BEAST.integrate!(op1, rt, rt, t1, t2, z_ce_se_1, SE_strategy)
+BEAST.integrate!(op1, rt, rt, t1, t2, z_ce_ss_1, SS_strategy)
 
 @show norm(z_ce_se_1 - z_ce_ss_1)
 @test z_ce_se_1 ≈ z_ce_ss_1 atol=1e-5
 
-BEAST.momintegrals!(op2, rt, rt, t1, t2, z_ce_se_2, SE_strategy)
-BEAST.momintegrals!(op2, rt, rt, t1, t2, z_ce_ss_2, SS_strategy)
+BEAST.integrate!(op2, rt, rt, t1, t2, z_ce_se_2, SE_strategy)
+BEAST.integrate!(op2, rt, rt, t1, t2, z_ce_ss_2, SS_strategy)
 
 @show norm(z_ce_se_2 - z_ce_ss_2)
 @test z_ce_se_2 ≈ z_ce_ss_2 atol=1e-5
 
-BEAST.momintegrals!(op3, rt, rt, t1, t2, z_ce_se_3, SE_strategy)
-BEAST.momintegrals!(op3, rt, rt, t1, t2, z_ce_ss_3, SS_strategy)
+BEAST.integrate!(op3, rt, rt, t1, t2, z_ce_se_3, SE_strategy)
+BEAST.integrate!(op3, rt, rt, t1, t2, z_ce_ss_3, SS_strategy)
 @show norm(z_ce_se_3 - z_ce_ss_3)
 @test z_ce_se_3 ≈ z_ce_ss_3 atol=1e-5
 
 SS_strategy = SauterSchwabQuadrature.CommonEdge(BEAST._legendre(18,T(0.0),T(1.0)))
 z_ce_ss_3_18 = zeros(3,3)
-BEAST.momintegrals!(op3, rt, rt, t1, t2, z_ce_ss_3_18, SS_strategy)
+BEAST.integrate!(op3, rt, rt, t1, t2, z_ce_ss_3_18, SS_strategy)
 @show norm(z_ce_ss_3 - z_ce_ss_3_18)
 @test z_ce_ss_3 ≈ z_ce_ss_3_18 atol=1e-14
 #end

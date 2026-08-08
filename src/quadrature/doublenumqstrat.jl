@@ -17,16 +17,20 @@ function quaddata(operator::IntegralOperator,
 end
 
 
-function quadrule(operator::IntegralOperator,
+function integrate!(operator::IntegralOperator,
     local_test_basis, local_trial_basis,
     test_id, test_element, trial_id, trial_element,
-    quad_data, qs::DoubleNumQStrat)
+    quad_data, qs::DoubleNumQStrat,
+    out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+    action::QuadRuleAction=ApplyIntegrate())
 
     test_quad_rules  = quad_data[1]
     trial_quad_rules = quad_data[2]
 
-    DoubleQuadRule(
+    qrule = DoubleQuadRule(
         test_quad_rules[1,test_id],
         trial_quad_rules[1,trial_id]
     )
+    integrate!(action, out, operator, test_space, tptr, test_element,
+        trial_space, bptr, trial_element, qrule)
 end

@@ -169,11 +169,11 @@ quadrule(op::MWDoubleLayerTransposedTDIO, testrefs, trialrefs, timerefs,
     p, testel, q, trialel, r, timeel, qd, quadstrat::OuterNumInnerAnalyticQStrat) =
         WiltonInts84Strat(qd[1][1,p],qd[2],qd[3])
 
-function momintegrals!(z, op::MWDoubleLayerTransposedTDIO,
+function integrate!(z, op::MWDoubleLayerTransposedTDIO,
 	g, f, T, τ, σ, ι, qr::WiltonInts84Strat)
 
 	op1 = MWDoubleLayerTDIO(op.speed_of_light, op.weight, op.num_diffs)
-	momintegrals!(z, op1, g, f, T, τ, σ, ι, qr::WiltonInts84Strat)
+	integrate!(z, op1, g, f, T, τ, σ, ι, qr::WiltonInts84Strat)
 	w = similar(z)
 	permutedims!(w, z, [2,1,3])
 

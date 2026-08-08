@@ -24,8 +24,10 @@ function quaddata(op::IntegralOperator, test_local_space, bsis_local_space,
             qs.sauter_schwab_common_vert,))
 end
 
-function quadrule(op::IntegralOperator, g, f,  i, τ, j, σ,
-    qd, qs::CommonFaceVertexSauterCommonEdgeWiltonPostitiveDistanceNumQStrat)
+function integrate!(op::IntegralOperator, g, f,  i, τ, j, σ,
+    qd, qs::CommonFaceVertexSauterCommonEdgeWiltonPostitiveDistanceNumQStrat,
+    out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+    action::QuadRuleAction=ApplyIntegrate())
 
     T = eltype(eltype(τ.vertices))
     hits = 0
@@ -43,27 +45,35 @@ function quadrule(op::IntegralOperator, g, f,  i, τ, j, σ,
 
     @assert hits <= 3
 
-    hits == 3 && return SauterSchwabQuadrature.CommonFace(qd.gausslegendre[3])
-    # hits == 2 && return SauterSchwabQuadrature.CommonEdge(qd.gausslegendre[2])
+    if hits == 3
+        qrule = SauterSchwabQuadrature.CommonFace(qd.gausslegendre[3])
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
     if hits == 2
-        return WiltonSERule(
+        qrule = WiltonSERule(
             qd.tpoints[2,i],
             SauterSchwabQuadrature.CommonEdge(qd.gausslegendre[2]),)
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
     end
-    hits == 1 && return SauterSchwabQuadrature.CommonVertex(qd.gausslegendre[1])
+    if hits == 1
+        qrule = SauterSchwabQuadrature.CommonVertex(qd.gausslegendre[1])
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
+    end
 
     h2 = volume(σ)
     xtol2 = 0.2 * 0.2
     k2 = abs2(gamma(op))
     if max(dmin2*k2, dmin2/16h2) < xtol2
-        return WiltonSERule(
+        qrule = WiltonSERule(
             qd.tpoints[2,i],
             DoubleQuadRule(
                 qd.tpoints[2,i],
                 qd.bpoints[2,j],),)
+        return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
     end
 
-    return DoubleQuadRule(
+    qrule = DoubleQuadRule(
         qd.tpoints[1,i],
         qd.bpoints[1,j],)
+    return integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
 end

@@ -60,7 +60,7 @@ function assemble!(exc::TDFunctional, testST, store; quadstrat=defaultquadstrat)
 
             fill!(z, 0)
             qr = quadrule(exc, testrefs, timerefs, p, τ, r, ρ, qd, qs)
-            momintegrals!(z, exc, testrefs, timerefs, τ, ρ, qr)
+            integrate!(z, exc, testrefs, timerefs, τ, ρ, qr)
 
             for i in 1 : num_testshapes
                 for d in 1 : numfunctions(timerefs)

@@ -58,7 +58,7 @@ function (igd::MWDL3DIntegrand3)(u,v)
 end
 
 
-function momintegrals!(op::MWDoubleLayer3D,
+function integrate!(op::MWDoubleLayer3D,
     test_local_space::BDMRefSpace, trial_local_space::RTRefSpace,
     test_triangular_element, trial_triangular_element, out, strat::SauterSchwabStrategy)
 

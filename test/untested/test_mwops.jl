@@ -63,5 +63,5 @@ qd = quaddata(K, rt, rt, elements(τ), elements(σ))
 zlocal = zeros(promote_type(scalartype(K), scalartype(S), scalartype(T)), 3, 3)
 strat = BEAST.quadrule(K, rt, rt, 1, t, 1, s, qd)
 strat =  BEAST.DoubleQuadRule(qd.tpoints[1,1],  qd.bpoints[1,1])
-BEAST.momintegrals!(K, rt, rt, t, s, zlocal, strat)
+BEAST.integrate!(K, rt, rt, t, s, zlocal, strat)
 z = zlocal[3,3]

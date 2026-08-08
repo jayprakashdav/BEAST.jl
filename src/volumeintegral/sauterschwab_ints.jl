@@ -32,7 +32,7 @@ end
 
 #TODO: use trial_ptr to get the cell material using material_array[trial_ptr] ...
 
-function momintegrals!(out, op::VIEOperator,
+function integrate!(out, op::VIEOperator,
     test_functions::Space, test_ptr, test_chart,
     trial_functions::Space, trial_ptr, trial_chart,
     strat::SauterSchwab3DStrategy)
@@ -63,7 +63,7 @@ end
 
 #TODO: use trial_ptr to get the cell material using material_array[trial_ptr] ...
 
-# function momintegrals!(z, op::VIEOperator,
+# function integrate!(z, op::VIEOperator,
 #     test_functions::Space, test_cellptr, test_chart,
 #     trial_functions::Space, trial_cellptr, trial_chart,
 #     strat::DoubleQuadRule)

@@ -37,7 +37,7 @@ q = refspace(Q)
 
 struct DoubleQuadTimeDomainRule end
 
-function momintegrals!(z, op::typeof(G),
+function integrate!(z, op::typeof(G),
     g::typeof(x1), f::typeof(x2), T::typeof(q),
     τ::typeof(τ1), σ::typeof(τ2), ι::typeof(ι),
     qr::DoubleQuadTimeDomainRule)
@@ -68,7 +68,7 @@ end end end end end end
 z1 = zeros(numfunctions(x1, domain(τ1)), numfunctions(x2, domain(τ2)), numfunctions(q))
 for r in BEAST.rings(τ1, τ2, ΔR)
     local ι = BEAST.ring(r, ΔR)
-    momintegrals!(z1, G, x1, x2, q, τ1, τ2, ι, DoubleQuadTimeDomainRule())
+    integrate!(z1, G, x1, x2, q, τ1, τ2, ι, DoubleQuadTimeDomainRule())
 end
 
 qs = BEAST.defaultquadstrat(G,X1,X2)
@@ -77,7 +77,7 @@ z2 = zeros(numfunctions(x1, domain(τ1)), numfunctions(x2, domain(τ2)), numfunc
 for r in BEAST.rings(τ1, τ2, ΔR)
     local ι = BEAST.ring(r, ΔR)
     quad_rule = quadrule(G, x1, x2, q, 1, τ1, 1, τ2, r, ι, qd, qs)
-    BEAST.momintegrals!(z2, G, x1, x2, q, τ1, τ2, ι, quad_rule)
+    BEAST.integrate!(z2, G, x1, x2, q, τ1, τ2, ι, quad_rule)
 end
 
 @test z1≈z2 rtol=1e-6

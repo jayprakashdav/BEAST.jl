@@ -27,13 +27,16 @@ end
 
 # Use numerical quadrature for now
 # Note: basis integral is over triangle, test over line
-function quadrule(op::SingleLayerTrace, g::LagrangeRefSpace, f::LagrangeRefSpace, i, τ, j, σ, qd,
-        qs::DoubleNumWiltonSauterQStrat)
-        
-    DoubleQuadRule(
+function integrate!(op::SingleLayerTrace, g::LagrangeRefSpace, f::LagrangeRefSpace, i, τ, j, σ, qd,
+        qs::DoubleNumWiltonSauterQStrat,
+        out=nothing, test_space=nothing, tptr=nothing, trial_space=nothing, bptr=nothing;
+        action::QuadRuleAction=ApplyIntegrate())
+
+    qrule = DoubleQuadRule(
         qd.tpoints[1,i],
         qd.bpoints[1,j]
     )
+    integrate!(action, out, op, test_space, tptr, τ, trial_space, bptr, σ, qrule)
 end
 
 integrand(op::SingleLayerTrace, kernel, g, τ, f, σ) = f[1]*g[1]*kernel.green

@@ -2,7 +2,7 @@ struct TestInBaryRefOfTrialQRule{S}
     conforming_qstrat::S
 end
 
-function BEAST.momintegrals!(out, op,
+function BEAST.integrate!(out, op,
     test_functions, test_cell, test_chart,
     trial_functions, trial_cell, trial_chart,
     qr::TestInBaryRefOfTrialQRule)
@@ -59,15 +59,12 @@ function BEAST.momintegrals!(out, op,
     Q = zeros(T, num_tshapes, num_tshapes)
     out1 = zero(out)
     for (q,chart) in enumerate(trial_charts)
-        qr1 = BEAST.quadrule(op, test_local_space, trial_local_space,
-            1, test_chart, q ,chart, qd, quadstrat)
-            
         BEAST.restrict!(Q, trial_local_space, trial_chart, chart, X[q])
 
         fill!(out1, 0)
-        BEAST.momintegrals!(out1, op,
-            test_functions, nothing, test_chart,
-            trial_functions, nothing, chart, qr1)
+        BEAST.integrate!(op, test_local_space, trial_local_space,
+            1, test_chart, q, chart, qd, quadstrat,
+            out1, test_functions, nothing, trial_functions, nothing; action=BEAST.ApplyIntegrate())
 
         for j in 1:num_bshapes
             for i in 1:num_tshapes
