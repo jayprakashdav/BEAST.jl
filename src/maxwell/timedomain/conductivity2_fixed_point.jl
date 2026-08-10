@@ -46,8 +46,9 @@ end
 
 function (f::ConductivityTDFunc3)(cell, cqdpt, mp)
     ei = f.efield[cell, cqdpt]
-    if norm(ei)==0
-        ei = 1e-9.+ei
+    # e -> 0 analytic limit: j -> 0 (see conductivity2.jl)
+    if norm(ei) < 1e-12
+        return zero(ei)
     end
     #return f.chr(norm(ei))*ei
     E = norm(ei)*f.scl #normalized to SI unit
@@ -75,8 +76,11 @@ end =#
 
 function kernelvals(f::ConductivityTDOp3, mp, cell, cqdpt)
     ei = f.op.efield[cell, cqdpt]
-    if norm(ei)==0
-        ei = 1e-9.+ei
+    # e -> 0 analytic limit: sigma -> ohmic sheet conductance sigma_s(0)
+    # (see conductivity2.jl); threshold in normalized units.
+    if norm(ei) < 1e-12
+        return f.op.Z0 * f.op.en_DL_y * f.op.v_p * 2 * f.op.nu_e * f.op.wb_red /
+               (f.op.nu_e * (f.op.nu_e + f.op.nu_p))
     end
     #dsigma = f.op.dchr(norm(ei))*kron(ei, ei')/norm(ei)+(f.op.chr(norm(ei)))*I(3)
     #return dsigma
